@@ -103,10 +103,10 @@ Implemented from that plan so far:
 - Sprint 1 data model groundwork: captured tweet, local analysis, affected assets, macro theme, and context score objects are now generated locally.
 - Sprint 2 Context Edge Score: relevant tweet cards show a 0-100 score with reasons, penalties, clarity, and risk level.
 - Sprint 3 AI Tweet Analysis: each tweet card has `Ask AI`, returning structured context, bias, risk tone, affected assets, why it matters, warning, and a local fallback if OpenAI fails.
+- Sprint 4 Sidebar Dashboard: the injected sidebar is now a tabbed cockpit with Today, Macro Desk, Assets, Calendar Risk, Journal, Coach, and Settings.
 
 Not fully implemented yet:
 
-- Sidebar dashboard tabs.
 - Session Brief.
 - Macro Desk.
 - Instrument Bias.

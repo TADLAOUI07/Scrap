@@ -316,6 +316,53 @@ Limites :
 - L'analyse IA par tweet n'est pas encore visible dans la sidebar dashboard a onglets.
 - Pas encore de rate limit visuel avance par utilisateur.
 
+## Sprint Cockpit 4 - Sidebar Dashboard avec onglets
+
+Objectif : transformer la sidebar simple en cockpit lisible pendant une session de trading.
+
+Livrables :
+
+- Sidebar renomme en `AI Trading Context Cockpit`.
+- Navigation par onglets :
+  - Today,
+  - Macro Desk,
+  - Assets,
+  - Calendar Risk,
+  - Journal,
+  - Coach,
+  - Settings.
+- Onglet Today :
+  - nombre de tweets scannes,
+  - average context score,
+  - risk tone,
+  - main driver,
+  - assets detectes,
+  - top tweets importants.
+- Onglet Macro Desk :
+  - groupement local par theme macro,
+  - score contexte moyen,
+  - assets associes.
+- Onglet Assets :
+  - fiche locale par actif detecte,
+  - biais news local,
+  - context score moyen,
+  - nombre de tweets.
+- Onglet Calendar Risk :
+  - detection locale des termes calendar risk,
+  - mentions count,
+  - assets,
+  - warning prudent.
+- Onglets Journal, Coach, Settings :
+  - etats vides propres prets pour les prochains sprints.
+
+Statut : fait pour la base locale.
+
+Limites :
+
+- Les onglets Journal et Coach ne sont pas encore connectes a un vrai journal.
+- Macro Desk et Assets sont locaux, sans narrative IA dediee pour l'instant.
+- Le Session Brief IA complet reste au sprint suivant.
+
 Fichiers principaux :
 
 - `background.js`
