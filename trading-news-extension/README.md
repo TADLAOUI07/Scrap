@@ -103,12 +103,14 @@ The journal is local-first and stored in `chrome.storage.local`.
 
 Current MVP behavior:
 
-- `Save to Journal` creates a watch-only journal entry from a tweet.
+- `Save to Journal` opens a journal form from a tweet.
 - The entry stores the linked tweet id, instrument, context score, risk tone, macro driver, affected assets, and notes.
+- The form supports trade idea, setup, confidence, emotion, followed plan, result, and notes.
 - The sidebar `Journal` tab displays recent journal entries.
+- The sidebar `Journal` tab includes simple instrument/result filters and delete actions.
 - The popup can export journal data as JSON or CSV.
 
-The journal does not give buy/sell signals. Full edit/delete forms and filters are planned for the next journal sprint.
+The journal does not give buy/sell signals. Full entry editing is planned for the next journal sprint.
 
 ## Cockpit Sprint Plan
 

@@ -230,6 +230,25 @@
     return setJournal([nextEntry, ...journal]);
   }
 
+  async function updateJournalEntry(entryId, patch) {
+    const journal = await getJournal();
+    const next = journal.map((entry) => {
+      if (entry.id !== entryId) return entry;
+      return {
+        ...entry,
+        ...patch,
+        id: entry.id,
+        updatedAt: new Date().toISOString()
+      };
+    });
+    return setJournal(next);
+  }
+
+  async function deleteJournalEntry(entryId) {
+    const journal = await getJournal();
+    return setJournal(journal.filter((entry) => entry.id !== entryId));
+  }
+
   async function clearJournal() {
     await setInStorage({ [JOURNAL_KEY]: [] });
     return [];
@@ -263,6 +282,8 @@
     getJournal,
     setJournal,
     saveJournalEntry,
+    updateJournalEntry,
+    deleteJournalEntry,
     clearJournal,
     deduplicateTweets
   };

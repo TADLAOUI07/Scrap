@@ -454,9 +454,9 @@ Fichiers principaux :
 - `popup.css`
 - `storage.js`
 
-## Sprint 14 - Dynamic Journal basique
+## Sprint 14 - Dynamic Journal
 
-Objectif : commencer le Sprint 9 du fichier partage avec une sauvegarde journal locale simple.
+Objectif : commencer le Sprint 9 du fichier partage avec un journal local utilisable.
 
 Livrables :
 
@@ -465,25 +465,33 @@ Livrables :
   - `getJournal()`,
   - `setJournal()`,
   - `saveJournalEntry()`,
+  - `updateJournalEntry()`,
+  - `deleteJournalEntry()`,
   - `clearJournal()`.
 - Bouton `Save to Journal` sur chaque carte tweet du popup.
+- Formulaire journal dans le popup :
+  - instrument,
+  - trade idea,
+  - setup,
+  - confidence,
+  - emotion,
+  - followed plan,
+  - result,
+  - notes.
 - Bouton `Save to Journal` dans les cartes principales de la sidebar.
-- Entree journal creee en mode prudent :
-  - `tradeIdea: watch_only`,
-  - `setup: news_reaction`,
-  - `result: pending`,
-  - snapshot du contexte marche.
+- Entree journal creee avec snapshot du contexte marche.
 - Onglet `Journal` dans la sidebar connecte aux entrees sauvegardees.
+- Filtres sidebar par instrument et resultat.
+- Suppression d'entree depuis la sidebar.
 - Export `Journal JSON`.
 - Export `Journal CSV`.
 
-Statut : fait pour la base.
+Statut : fait pour la base avancee.
 
 Limites :
 
-- Pas encore de formulaire complet.
-- Pas encore edit/delete par entree.
-- Pas encore filtres par instrument, resultat, emotion ou date.
+- Pas encore edition d'une entree existante.
+- Pas encore filtres par emotion ou date.
 
 Fichiers principaux :
 

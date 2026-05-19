@@ -236,7 +236,8 @@ button:disabled {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 38px;
   border: 1px solid var(--border);
@@ -248,9 +249,17 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: 2px solid rgba(89, 168, 255, .28);
   outline-offset: 1px;
+}
+
+textarea {
+  min-height: 92px;
+  padding: 10px;
+  resize: vertical;
+  line-height: 1.45;
 }
 
 .toggle-row {
@@ -446,6 +455,34 @@ input[type="checkbox"]:checked::after {
   padding: 10px;
   color: #dce8f7;
   font-size: 13px;
+}
+
+.journal-form-panel {
+  display: grid;
+  gap: 11px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.journal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.compact-toggle {
+  padding: 9px;
+  background: #0c1118;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.journal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 .tweet-list {

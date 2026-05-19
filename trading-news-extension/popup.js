@@ -6,6 +6,7 @@
     rawTweets: [],
     history: [],
     journal: [],
+    journalDraftTweet: null,
     filter: "all",
     settings: null,
     sessionBrief: null
@@ -56,6 +57,18 @@
       "nextRefresh",
       "tweetList",
       "message",
+      "journalFormPanel",
+      "journalFormContext",
+      "journalInstrument",
+      "journalTradeIdea",
+      "journalSetup",
+      "journalConfidence",
+      "journalEmotion",
+      "journalResult",
+      "journalFollowedPlan",
+      "journalNotes",
+      "saveJournalEntry",
+      "cancelJournalEntry",
       "exportJson",
       "exportCsv",
       "exportRawJson",
@@ -86,6 +99,8 @@
     els.exportRawCsv.addEventListener("click", exportRawCsv);
     els.exportJournalJson.addEventListener("click", exportJournalJson);
     els.exportJournalCsv.addEventListener("click", exportJournalCsv);
+    els.saveJournalEntry.addEventListener("click", saveJournalForm);
+    els.cancelJournalEntry.addEventListener("click", closeJournalForm);
     els.clearHistory.addEventListener("click", clearHistory);
     els.filters.forEach((button) => {
       button.addEventListener("click", () => {
@@ -231,25 +246,66 @@
     const tweet = state.tweets.find((item) => item.id === tweetId);
     if (!tweet) return;
 
-    const entry = buildJournalEntry(tweet);
-    state.journal = await TNFStorage.saveJournalEntry(entry);
-    showMessage("Saved to Journal as watch-only context.");
+    openJournalForm(tweet);
   }
 
-  function buildJournalEntry(tweet) {
+  function openJournalForm(tweet) {
+    state.journalDraftTweet = tweet;
+    const draft = buildJournalEntry(tweet);
+    els.journalFormPanel.hidden = false;
+    els.journalFormContext.textContent = `${draft.instrument} | Context ${draft.marketContextSnapshot.contextScore}/100`;
+    els.journalInstrument.value = draft.instrument;
+    els.journalTradeIdea.value = draft.tradeIdea;
+    els.journalSetup.value = draft.setup;
+    els.journalConfidence.value = draft.confidence;
+    els.journalEmotion.value = draft.emotion;
+    els.journalResult.value = draft.result;
+    els.journalFollowedPlan.checked = Boolean(draft.followedPlan);
+    els.journalNotes.value = draft.notes;
+    els.journalFormPanel.scrollIntoView({ block: "nearest" });
+  }
+
+  function closeJournalForm() {
+    state.journalDraftTweet = null;
+    els.journalFormPanel.hidden = true;
+  }
+
+  async function saveJournalForm() {
+    if (!state.journalDraftTweet) {
+      showMessage("No tweet selected for journal.");
+      return;
+    }
+
+    const entry = buildJournalEntry(state.journalDraftTweet, {
+      instrument: els.journalInstrument.value.trim().toUpperCase(),
+      tradeIdea: els.journalTradeIdea.value,
+      setup: els.journalSetup.value,
+      confidence: TNFUtils.clampNumber(els.journalConfidence.value, 1, 5),
+      emotion: els.journalEmotion.value,
+      followedPlan: els.journalFollowedPlan.checked,
+      result: els.journalResult.value,
+      notes: els.journalNotes.value.trim()
+    });
+
+    state.journal = await TNFStorage.saveJournalEntry(entry);
+    closeJournalForm();
+    showMessage("Journal entry saved.");
+  }
+
+  function buildJournalEntry(tweet, overrides = {}) {
     const instrument = (tweet.affectedAssets && tweet.affectedAssets[0]) || state.settings.selectedPair || "XAUUSD";
     return {
       id: TNFUtils.simpleHash(`journal:${tweet.id}:${Date.now()}`),
       createdAt: new Date().toISOString(),
       linkedTweetIds: [tweet.id],
-      instrument,
-      tradeIdea: "watch_only",
-      setup: "news_reaction",
-      confidence: 3,
-      emotion: "calm",
-      followedPlan: true,
-      result: "pending",
-      notes: tweet.summary || tweet.text || "",
+      instrument: overrides.instrument || instrument,
+      tradeIdea: overrides.tradeIdea || "watch_only",
+      setup: overrides.setup || "news_reaction",
+      confidence: overrides.confidence || 3,
+      emotion: overrides.emotion || "calm",
+      followedPlan: overrides.followedPlan !== undefined ? overrides.followedPlan : true,
+      result: overrides.result || "pending",
+      notes: overrides.notes || tweet.summary || tweet.text || "",
       marketContextSnapshot: {
         riskTone: tweet.contextRiskLevel || "unknown",
         mainDriver: tweet.macroTheme || "",

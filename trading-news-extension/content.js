@@ -415,6 +415,28 @@
         font-size: 12px;
         font-weight: 800;
       }
+      #${SIDEBAR_ID} .tnf-action.danger {
+        background: rgba(255,95,109,.13);
+        color: #ffc3c8;
+        border-color: rgba(255,95,109,.36);
+      }
+      #${SIDEBAR_ID} .tnf-mini-filter {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      #${SIDEBAR_ID} .tnf-mini-filter select {
+        width: 100%;
+        min-height: 32px;
+        border: 1px solid #2b3746;
+        border-radius: 8px;
+        background: #0c1118;
+        color: #f4f7fb;
+        padding: 0 8px;
+        font: inherit;
+        font-size: 12px;
+      }
     `;
 
     sidebar.querySelector(".tnf-close").addEventListener("click", () => sidebar.remove());
@@ -433,6 +455,15 @@
         button.textContent = "Saved";
         button.disabled = true;
       });
+    });
+    sidebar.querySelectorAll("[data-delete-journal]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        await TNFStorage.deleteJournalEntry(button.dataset.deleteJournal);
+        button.closest(".tnf-card").remove();
+      });
+    });
+    sidebar.querySelectorAll("[data-journal-filter]").forEach((select) => {
+      select.addEventListener("change", () => applyJournalFilters(sidebar));
     });
     document.documentElement.appendChild(style);
     document.documentElement.appendChild(sidebar);
@@ -579,8 +610,22 @@
       return '<div class="tnf-empty">No journal entries yet. Use Save to Journal on a tweet card to store watch-only context.</div>';
     }
 
-    return entries.map((entry) => `
-      <div class="tnf-card">
+    const instruments = Array.from(new Set(entries.map((entry) => entry.instrument).filter(Boolean))).sort();
+    const results = Array.from(new Set(entries.map((entry) => entry.result).filter(Boolean))).sort();
+
+    return `
+      <div class="tnf-mini-filter">
+        <select data-journal-filter="instrument" aria-label="Filter journal by instrument">
+          <option value="">All instruments</option>
+          ${instruments.map((instrument) => `<option value="${escapeAttribute(instrument)}">${escapeHtml(instrument)}</option>`).join("")}
+        </select>
+        <select data-journal-filter="result" aria-label="Filter journal by result">
+          <option value="">All results</option>
+          ${results.map((result) => `<option value="${escapeAttribute(result)}">${escapeHtml(result)}</option>`).join("")}
+        </select>
+      </div>
+      ${entries.map((entry) => `
+      <div class="tnf-card" data-journal-entry data-instrument="${escapeAttribute(entry.instrument || "")}" data-result="${escapeAttribute(entry.result || "")}">
         <div class="tnf-section-title">${escapeHtml(entry.instrument || "Unknown instrument")}</div>
         <div class="tnf-pill-row">
           <span class="tnf-pill">${escapeHtml(entry.tradeIdea || "watch_only")}</span>
@@ -589,8 +634,12 @@
         </div>
         <div class="tnf-text">${escapeHtml(entry.notes || "")}</div>
         <div class="tnf-meta">${escapeHtml(formatDate(entry.createdAt))} | ${escapeHtml(entry.setup || "news_reaction")} | ${escapeHtml(entry.emotion || "calm")}</div>
+        <div class="tnf-card-actions">
+          <button type="button" class="tnf-action danger" data-delete-journal="${escapeAttribute(entry.id)}">Delete</button>
+        </div>
       </div>
-    `).join("");
+      `).join("")}
+    `;
   }
 
   function buildPlaceholderPanel(title, message) {
@@ -694,6 +743,16 @@
     } catch (error) {
       return value;
     }
+  }
+
+  function applyJournalFilters(sidebar) {
+    const instrument = sidebar.querySelector('[data-journal-filter="instrument"]')?.value || "";
+    const result = sidebar.querySelector('[data-journal-filter="result"]')?.value || "";
+    sidebar.querySelectorAll("[data-journal-entry]").forEach((entry) => {
+      const matchesInstrument = !instrument || entry.dataset.instrument === instrument;
+      const matchesResult = !result || entry.dataset.result === result;
+      entry.hidden = !(matchesInstrument && matchesResult);
+    });
   }
 
   function delay(milliseconds) {
