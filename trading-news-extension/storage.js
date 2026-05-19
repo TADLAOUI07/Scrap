@@ -4,6 +4,15 @@
   const SETTINGS_KEY = "tnf_settings";
   const HISTORY_KEY = "tnf_history";
   const LAST_SCAN_KEY = "tnf_last_scan";
+  const DEFAULT_AI_ANALYSIS_PROMPT = [
+    "Analyze the supplied X/Twitter news like a professional macro trader.",
+    "Focus on market-moving impact for the selected pair or market.",
+    "Prioritize fresh macro drivers: central banks, inflation, jobs data, yields, DXY, geopolitics, oil, risk sentiment, crypto liquidity, earnings, and indices.",
+    "Separate bullish and bearish forces clearly.",
+    "Mention exactly which supplied news items support the bias.",
+    "If the news is weak, noisy, or contradictory, return mixed or neutral with low confidence.",
+    "Do not invent external facts. Do not give trade entries, stop losses, or financial advice."
+  ].join("\n");
 
   const DEFAULT_SETTINGS = {
     autoRefreshEnabled: false,
@@ -29,6 +38,7 @@
     openAiApiKey: "",
     openAiModel: "gpt-4.1-mini",
     aiAutoAnalyze: false,
+    aiAnalysisPrompt: DEFAULT_AI_ANALYSIS_PROMPT,
     aiBackendUrl: "",
     categories: globalThis.TNFScoring ? globalThis.TNFScoring.DEFAULT_CATEGORIES : [],
     enabledFilters: {
@@ -137,6 +147,7 @@
     SETTINGS_KEY,
     HISTORY_KEY,
     LAST_SCAN_KEY,
+    DEFAULT_AI_ANALYSIS_PROMPT,
     DEFAULT_SETTINGS,
     getSettings,
     saveSettings,

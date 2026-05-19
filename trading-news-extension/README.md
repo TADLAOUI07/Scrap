@@ -87,6 +87,7 @@ You can configure:
 - Theme: system, light, or dark.
 - OpenAI API key for optional AI analysis.
 - OpenAI model.
+- Custom AI analysis prompt to guide how the model scans and interprets news.
 - Optional AI Backend URL for future backend routing.
 - Export/import settings JSON.
 - Reset settings.
@@ -140,10 +141,11 @@ To enable AI analysis:
 1. Open the extension options page.
 2. Paste your OpenAI API key into `OpenAI API Key`.
 3. Set the model name, for example `gpt-4.1-mini`.
-4. Click `Save Settings`.
-5. Open the popup on an X/Twitter page.
-6. Click `Scan Latest 10 Tweets`.
-7. Click `Analyze with OpenAI`.
+4. Edit `AI analysis prompt` if you want to define your own macro/trading framework.
+5. Click `Save Settings`.
+6. Open the popup on an X/Twitter page.
+7. Click `Scan Latest 10 Tweets`.
+8. Click `Analyze with OpenAI`.
 
 If the local keyword filter finds `0 relevant` items, the AI analysis can still use the latest 10 visible tweets captured during the slow scan. This is useful when a news account posts market-moving headlines that do not match your current keyword list yet.
 

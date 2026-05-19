@@ -215,6 +215,7 @@ Livrables :
 - Champ OpenAI API Key dans les options.
 - Champ modele OpenAI.
 - Bouton `Analyze with OpenAI` dans le popup.
+- Prompt IA personnalisable dans la page options.
 - Analyse bullish / bearish / mixed / neutral.
 - Mention des news qui influencent la decision.
 - Resume macro.
@@ -405,11 +406,12 @@ Pour desactiver :
 1. Ouvrir la page options de l'extension.
 2. Coller une cle OpenAI personnelle dans `OpenAI API Key`.
 3. Choisir le modele, par exemple `gpt-4.1-mini`.
-4. Cliquer `Save Settings`.
-5. Ouvrir une page X/Twitter.
-6. Cliquer `Scan Latest 10 Tweets`.
-7. Choisir une paire dans `News for pair / market`.
-8. Cliquer `Analyze with OpenAI`.
+4. Modifier `AI analysis prompt` pour guider la methode d'analyse de ton modele.
+5. Cliquer `Save Settings`.
+6. Ouvrir une page X/Twitter.
+7. Cliquer `Scan Latest 10 Tweets`.
+8. Choisir une paire dans `News for pair / market`.
+9. Cliquer `Analyze with OpenAI`.
 
 Important :
 

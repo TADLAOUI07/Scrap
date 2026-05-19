@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  function buildMarketPrompt(tweets, pair) {
+  function buildMarketPrompt(tweets, pair, userPrompt) {
     const compactTweets = tweets.slice(0, 20).map((tweet, index) => ({
       index: index + 1,
       text: tweet.text,
@@ -22,12 +22,15 @@
       "Mention the specific news items that impacted the decision.",
       "Keep it practical and risk-aware. This is not financial advice.",
       "",
+      "User analysis framework:",
+      userPrompt || "Use the default market-moving macro analysis framework.",
+      "",
       "News items JSON:",
       JSON.stringify(compactTweets, null, 2)
     ].join("\n");
   }
 
-  async function analyzeWithOpenAI({ apiKey, model, pair, tweets }) {
+  async function analyzeWithOpenAI({ apiKey, model, pair, tweets, userPrompt }) {
     if (!apiKey) {
       throw new Error("OpenAI API key is missing. Add it in Options, or use a local backend URL.");
     }
@@ -40,7 +43,7 @@
       },
       body: JSON.stringify({
         model: model || "gpt-4.1-mini",
-        input: buildMarketPrompt(tweets, pair),
+        input: buildMarketPrompt(tweets, pair, userPrompt),
         text: {
           format: {
             type: "json_schema",
@@ -157,7 +160,8 @@
       apiKey: settings.openAiApiKey,
       model: settings.openAiModel,
       pair,
-      tweets: analysisTweets
+      tweets: analysisTweets,
+      userPrompt: settings.aiAnalysisPrompt
     });
     return {
       headline: result.headline || "Market read",

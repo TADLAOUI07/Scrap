@@ -98,6 +98,10 @@ textarea {
   line-height: 1.45;
 }
 
+.large-textarea {
+  min-height: 180px;
+}
+
 .state-text {
   margin: -6px 0 14px;
   font-size: 13px;
