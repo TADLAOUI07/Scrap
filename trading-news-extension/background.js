@@ -63,6 +63,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "TNF_ANALYZE_ASSETS") {
+    analyzeAssets(message.payload || {}).then(sendResponse);
+    return true;
+  }
+
   if (message.type === "TNF_AUTO_SCAN_COMPLETE") {
     handleAutoScanComplete(message.payload).then(sendResponse);
     return true;
@@ -392,6 +397,26 @@ async function generateSessionBrief(payload) {
     return {
       ok: false,
       error: error.message || "Session brief generation failed."
+    };
+  }
+}
+
+async function analyzeAssets(payload) {
+  const settings = await TNFStorage.getSettings();
+  const tweets = Array.isArray(payload.tweets) ? payload.tweets.slice(0, 20) : [];
+  const aiTweets = TNFAI.filterTweetsForAiKeywords(tweets, settings);
+
+  if (tweets.length === 0) {
+    return { ok: false, error: "No tweets available for asset analysis." };
+  }
+
+  try {
+    const analysis = await TNFAI.generateInstrumentBiases(settings, aiTweets.length ? aiTweets : tweets);
+    return { ok: true, analysis };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message || "Asset analysis failed."
     };
   }
 }

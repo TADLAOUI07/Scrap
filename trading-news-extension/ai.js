@@ -91,6 +91,41 @@
     ].join("\n");
   }
 
+  function buildInstrumentBiasPrompt(tweets, settings) {
+    const compactTweets = tweets.slice(0, 20).map((tweet, index) => ({
+      index: index + 1,
+      tweetId: tweet.id,
+      text: tweet.text,
+      author: tweet.author,
+      time: tweet.time,
+      categories: tweet.categories,
+      impactScore: tweet.impactScore,
+      contextScore: tweet.contextScoreValue,
+      affectedAssets: tweet.affectedAssets,
+      macroTheme: tweet.macroTheme,
+      localDirection: tweet.direction
+    }));
+
+    return [
+      "You are a senior bank cross-asset strategist producing an instrument-bias note for a trading desk.",
+      "Analyze ONLY the supplied X/Twitter news. Do not use external facts. Do not invent missing data.",
+      "For each watched instrument that is supported by the supplied tweets, explain why the news flow is bullish, bearish, mixed, neutral, or unclear.",
+      "Focus on catalysts, transmission channels, rate/yield/DXY impact, risk sentiment, commodities, equities, crypto, and second-order effects.",
+      "Mention exact tweet IDs supporting the reasons. If support is weak or contradictory, say so clearly.",
+      "Do not provide entries, stop losses, take profits, position sizing, or buy/sell instructions.",
+      "",
+      `Watched instruments: ${(settings.watchedPairs || []).join(", ")}`,
+      "",
+      "Custom user analysis framework:",
+      settings.aiAnalysisPrompt || "",
+      "",
+      "Recent tweets JSON:",
+      JSON.stringify(compactTweets, null, 2),
+      "",
+      "Return ONLY valid JSON matching the schema."
+    ].join("\n");
+  }
+
   async function analyzeWithOpenAI({ apiKey, model, pair, tweets, userPrompt }) {
     if (!apiKey) {
       throw new Error("OpenAI API key is missing. Add it in Options, or use a local backend URL.");
@@ -320,6 +355,78 @@
     return normalizeSessionBrief(JSON.parse(text), tweets, false);
   }
 
+  async function generateInstrumentBiasesWithOpenAI(settings, tweets) {
+    if (!settings.openAiApiKey) {
+      throw new Error("OpenAI API key is missing.");
+    }
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${settings.openAiApiKey}`
+      },
+      body: JSON.stringify({
+        model: settings.openAiModel || "gpt-5.4-mini",
+        input: buildInstrumentBiasPrompt(tweets, settings),
+        text: {
+          format: {
+            type: "json_schema",
+            name: "instrument_biases",
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                instrumentBiases: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      symbol: { type: "string" },
+                      newsBias: { type: "string", enum: ["bullish", "bearish", "mixed", "neutral", "unclear"] },
+                      confidence: { type: "number" },
+                      mainDrivers: { type: "array", items: { type: "string" } },
+                      bullishReasons: { type: "array", items: { type: "string" } },
+                      bearishReasons: { type: "array", items: { type: "string" } },
+                      supportingTweetIds: { type: "array", items: { type: "string" } },
+                      conflictingTweetIds: { type: "array", items: { type: "string" } },
+                      riskWarning: { type: "string" },
+                      tradingContext: { type: "string" }
+                    },
+                    required: [
+                      "symbol",
+                      "newsBias",
+                      "confidence",
+                      "mainDrivers",
+                      "bullishReasons",
+                      "bearishReasons",
+                      "supportingTweetIds",
+                      "conflictingTweetIds",
+                      "riskWarning",
+                      "tradingContext"
+                    ]
+                  }
+                }
+              },
+              required: ["instrumentBiases"]
+            },
+            strict: true
+          }
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenAI request failed: ${response.status} ${errorText.slice(0, 180)}`);
+    }
+
+    const data = await response.json();
+    const text = extractOutputText(data);
+    return normalizeInstrumentBiases(JSON.parse(text), tweets, false);
+  }
+
   async function analyzeWithBackend({ backendUrl, pair, tweets }) {
     if (!backendUrl) {
       throw new Error("AI backend URL is missing.");
@@ -406,6 +513,23 @@
     }
   }
 
+  async function generateInstrumentBiases(settings, tweets) {
+    const relevantTweets = Array.isArray(tweets) ? tweets.slice(0, 20) : [];
+    if (relevantTweets.length === 0) {
+      throw new Error("No tweets available for asset analysis.");
+    }
+
+    try {
+      return await generateInstrumentBiasesWithOpenAI(settings, relevantTweets);
+    } catch (error) {
+      return {
+        instrumentBiases: fallbackInstrumentBiases(relevantTweets, settings),
+        fallback: true,
+        error: error.message || "AI asset analysis failed."
+      };
+    }
+  }
+
   function fallbackSessionBrief(tweets, settings) {
     const averageContextScore = tweets.length
       ? Math.round(tweets.reduce((sum, tweet) => sum + Number(tweet.contextScoreValue || 0), 0) / tweets.length)
@@ -460,6 +584,69 @@
         : fallbackSessionBrief(tweets, {}).averageContextScore,
       fallback
     };
+  }
+
+  function normalizeInstrumentBiases(payload, tweets, fallback) {
+    const rows = Array.isArray(payload.instrumentBiases) ? payload.instrumentBiases : [];
+    return {
+      generatedAt: new Date().toISOString(),
+      fallback,
+      instrumentBiases: rows.map((row) => ({
+        symbol: String(row.symbol || "").toUpperCase(),
+        newsBias: normalizeBias(row.newsBias),
+        confidence: globalThis.TNFUtils.clampNumber(row.confidence, 0, 100),
+        mainDrivers: Array.isArray(row.mainDrivers) ? row.mainDrivers : [],
+        bullishReasons: Array.isArray(row.bullishReasons) ? row.bullishReasons : [],
+        bearishReasons: Array.isArray(row.bearishReasons) ? row.bearishReasons : [],
+        supportingTweetIds: Array.isArray(row.supportingTweetIds) ? row.supportingTweetIds : [],
+        conflictingTweetIds: Array.isArray(row.conflictingTweetIds) ? row.conflictingTweetIds : [],
+        riskWarning: row.riskWarning || "",
+        tradingContext: row.tradingContext || ""
+      })).filter((row) => row.symbol)
+    };
+  }
+
+  function fallbackInstrumentBiases(tweets, settings) {
+    const watched = settings.watchedPairs || [];
+    return watched.map((symbol) => {
+      const related = tweets.filter((tweet) => {
+        const assets = tweet.affectedAssets || [];
+        if (assets.includes(symbol)) return true;
+        const haystack = `${tweet.text || ""} ${(tweet.categories || []).join(" ")} ${(tweet.detectedKeywords || []).join(" ")}`.toLowerCase();
+        return getPairKeywords(symbol).some((keyword) => haystack.includes(keyword));
+      });
+      if (related.length === 0) return null;
+      const bias = inferFallbackBias(related);
+      const mainDrivers = topItems(related.map((tweet) => tweet.macroTheme || (tweet.categories && tweet.categories[0]) || "").filter(Boolean), 3);
+      return {
+        symbol,
+        newsBias: bias,
+        confidence: Math.min(75, 35 + related.length * 10),
+        mainDrivers,
+        bullishReasons: bias === "bullish" ? related.slice(0, 3).map((tweet) => tweet.reason || tweet.summary || "Local bullish context detected.") : [],
+        bearishReasons: bias === "bearish" ? related.slice(0, 3).map((tweet) => tweet.reason || tweet.summary || "Local bearish context detected.") : [],
+        supportingTweetIds: related.map((tweet) => tweet.id).filter(Boolean),
+        conflictingTweetIds: [],
+        riskWarning: "Fallback local read. Use as context only, not a trade signal.",
+        tradingContext: `${symbol} is linked to ${related.length} scanned news item(s). Bias is local and may be incomplete without OpenAI.`
+      };
+    }).filter(Boolean);
+  }
+
+  function inferFallbackBias(tweets) {
+    const counts = tweets.reduce((acc, tweet) => {
+      const direction = tweet.direction || "neutral";
+      acc[direction] = (acc[direction] || 0) + 1;
+      return acc;
+    }, {});
+    if ((counts.bullish || 0) > (counts.bearish || 0)) return "bullish";
+    if ((counts.bearish || 0) > (counts.bullish || 0)) return "bearish";
+    if ((counts.bullish || 0) > 0 && (counts.bearish || 0) > 0) return "mixed";
+    return "neutral";
+  }
+
+  function normalizeBias(value) {
+    return ["bullish", "bearish", "mixed", "neutral", "unclear"].includes(value) ? value : "unclear";
   }
 
   function topItems(items, limit) {
@@ -596,6 +783,7 @@
     analyzeMarketNews,
     analyzeTweet,
     generateSessionBrief,
+    generateInstrumentBiases,
     fallbackTweetAnalysis,
     fallbackSessionBrief,
     filterTweetsForPair,

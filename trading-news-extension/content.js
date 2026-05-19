@@ -26,7 +26,7 @@
     }
 
     if (message.type === "TNF_SHOW_SIDEBAR") {
-      showSidebar(message.tweets || [], message.rawCount || 0, message.sessionBrief || null).then(sendResponse);
+      showSidebar(message.tweets || [], message.rawCount || 0, message.sessionBrief || null, message.assetBiases || null).then(sendResponse);
       return true;
     }
 
@@ -189,12 +189,12 @@
     return link ? TNFUtils.normalizeText(link.textContent) : "Unknown";
   }
 
-  async function showSidebar(tweets, rawCount, sessionBrief) {
+  async function showSidebar(tweets, rawCount, sessionBrief, assetBiases) {
     const existing = document.getElementById(SIDEBAR_ID);
     if (existing) existing.remove();
 
     const sortedTweets = [...tweets].sort((a, b) => (b.contextScoreValue || b.impactScore) - (a.contextScoreValue || a.impactScore));
-    const dashboard = buildSidebarDashboard(sortedTweets, rawCount, sessionBrief);
+    const dashboard = buildSidebarDashboard(sortedTweets, rawCount, sessionBrief, assetBiases);
     const sidebar = document.createElement("aside");
     const activeTabId = dashboard.tabs[0] ? dashboard.tabs[0].id : "assets";
     sidebar.id = SIDEBAR_ID;
@@ -483,6 +483,32 @@
         font-size: 12px;
         line-height: 1.45;
       }
+      #${SIDEBAR_ID} .tnf-ai-reason-box {
+        display: grid;
+        gap: 7px;
+        margin-top: 2px;
+        padding: 10px;
+        background: rgba(9, 12, 16, .62);
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: 8px;
+      }
+      #${SIDEBAR_ID} .tnf-ai-reason-title {
+        color: #f4f7fb;
+        font-size: 12px;
+        font-weight: 950;
+      }
+      #${SIDEBAR_ID} .tnf-ai-reason-list {
+        margin: 0;
+        padding-left: 18px;
+        color: #dce6f2;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      #${SIDEBAR_ID} .tnf-ai-warning {
+        color: #f4d35e;
+        font-size: 12px;
+        line-height: 1.45;
+      }
     `;
 
     sidebar.querySelector(".tnf-close").addEventListener("click", () => sidebar.remove());
@@ -498,11 +524,11 @@
     return { ok: true };
   }
 
-  function buildSidebarDashboard(tweets, rawCount, sessionBrief) {
+  function buildSidebarDashboard(tweets, rawCount, sessionBrief, assetBiases) {
     const today = buildTodayPanel(tweets, rawCount, sessionBrief);
     return {
       tabs: [
-        { id: "assets", label: "Assets", html: buildAssetsPanel(tweets) },
+        { id: "assets", label: "Assets", html: buildAssetsPanel(tweets, assetBiases) },
         { id: "today", label: "Today", html: today },
         { id: "macro", label: "Macro Desk", html: buildMacroPanel(tweets) }
       ]
@@ -579,35 +605,83 @@
     }).join("");
   }
 
-  function buildAssetsPanel(tweets) {
+  function buildAssetsPanel(tweets, assetBiases) {
     const groups = groupBy(tweets.flatMap((tweet) => (tweet.affectedAssets || []).map((asset) => ({ asset, tweet }))), (item) => item.asset);
     const assets = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
     if (assets.length === 0) return '<div class="tnf-empty">No watched assets detected in filtered tweets.</div>';
+    const aiBySymbol = getAssetBiasMap(assetBiases);
     return assets.map(([asset, items]) => {
       const assetTweets = items.map((item) => item.tweet);
       const avg = Math.round(assetTweets.reduce((sum, tweet) => sum + Number(tweet.contextScoreValue || 0), 0) / assetTweets.length);
-      const bias = inferAssetBias(assetTweets);
+      const aiBias = aiBySymbol.get(String(asset).toUpperCase());
+      const bias = aiBias && aiBias.newsBias && aiBias.newsBias !== "unclear" ? aiBias.newsBias : inferAssetBias(assetTweets);
       const risk = assetTweets.some((tweet) => tweet.contextRiskLevel === "high") ? "high" : avg >= 55 ? "medium" : "low";
-      const drivers = getTopItems(assetTweets.map((tweet) => tweet.macroTheme || "").filter(Boolean), 3);
+      const drivers = aiBias && aiBias.mainDrivers && aiBias.mainDrivers.length
+        ? aiBias.mainDrivers.slice(0, 3)
+        : getTopItems(assetTweets.map((tweet) => tweet.macroTheme || "").filter(Boolean), 3);
       const topTweet = assetTweets.sort((a, b) => Number(b.contextScoreValue || 0) - Number(a.contextScoreValue || 0))[0];
       return `
         <div class="tnf-card tnf-asset-card ${escapeAttribute(bias)}">
           <div class="tnf-asset-head">
             <div class="tnf-asset-symbol">${escapeHtml(asset)}</div>
-            <div class="tnf-asset-score">Context ${escapeHtml(String(avg))}/100</div>
+            <div class="tnf-asset-score">${escapeHtml(aiBias ? `${Math.round(aiBias.confidence || 0)}% AI` : `Context ${avg}/100`)}</div>
           </div>
           <div class="tnf-asset-body">
             <div class="tnf-pill-row">
               <span class="tnf-pill ${escapeAttribute(risk)}">${escapeHtml(risk)} risk</span>
               <span class="tnf-pill">${assetTweets.length} supporting tweet(s)</span>
+              ${aiBias && aiBias.fallback ? '<span class="tnf-pill">local fallback</span>' : aiBias ? '<span class="tnf-pill">OpenAI reasons</span>' : '<span class="tnf-pill">local reasons</span>'}
             </div>
-            <div class="tnf-text">${escapeHtml(getAssetContextLine(asset, bias, risk, topTweet))}</div>
+            <div class="tnf-text">${escapeHtml(aiBias && aiBias.tradingContext ? aiBias.tradingContext : getAssetContextLine(asset, bias, risk, topTweet))}</div>
+            ${renderAssetAiReasons(aiBias, bias)}
             ${drivers.length ? `<ul class="tnf-driver-list">${drivers.map((driver) => `<li>${escapeHtml(driver)}</li>`).join("")}</ul>` : ""}
+            ${aiBias && aiBias.riskWarning ? `<div class="tnf-ai-warning">${escapeHtml(aiBias.riskWarning)}</div>` : ""}
             ${topTweet && topTweet.url ? `<a href="${escapeAttribute(topTweet.url)}" target="_blank" rel="noreferrer">Open strongest tweet</a>` : ""}
           </div>
         </div>
       `;
     }).join("");
+  }
+
+  function getAssetBiasMap(assetBiases) {
+    const rows = assetBiases && Array.isArray(assetBiases.instrumentBiases)
+      ? assetBiases.instrumentBiases
+      : [];
+    return new Map(rows.map((row) => [
+      String(row.symbol || "").toUpperCase(),
+      { ...row, fallback: Boolean(assetBiases && assetBiases.fallback) }
+    ]));
+  }
+
+  function renderAssetAiReasons(aiBias, bias) {
+    if (!aiBias) {
+      return `
+        <div class="tnf-ai-reason-box">
+          <div class="tnf-ai-reason-title">Why this read?</div>
+          <ul class="tnf-ai-reason-list">
+            <li>Local score uses matched asset keywords, context score, risk level, and tweet direction.</li>
+            <li>Add your OpenAI API key to get institutional-style reasons under each asset.</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    const reasons = bias === "bearish"
+      ? aiBias.bearishReasons || []
+      : bias === "bullish"
+        ? aiBias.bullishReasons || []
+        : [...(aiBias.bullishReasons || []), ...(aiBias.bearishReasons || [])];
+    const cleanReasons = reasons.length ? reasons.slice(0, 4) : aiBias.mainDrivers || [];
+    if (!cleanReasons.length) return "";
+
+    return `
+      <div class="tnf-ai-reason-box">
+        <div class="tnf-ai-reason-title">Why ${escapeHtml(bias)}?</div>
+        <ul class="tnf-ai-reason-list">
+          ${cleanReasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}
+        </ul>
+      </div>
+    `;
   }
 
   function renderSidebarTweetCard(tweet) {

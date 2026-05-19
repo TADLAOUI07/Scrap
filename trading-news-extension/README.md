@@ -18,6 +18,7 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 - Impact scoring from 0 to 5.
 - Local bullish, bearish, or neutral direction hint based on tweet text.
 - Optional OpenAI market analysis with bullish/bearish/mixed/neutral bias and explicit news drivers.
+- Optional OpenAI asset-bias reasons in the sidebar Assets tab.
 - Context Edge Score from 0 to 100 for each relevant tweet, with reasons, penalties, clarity, risk level, affected assets, and macro theme.
 - Popup filters: All, High Impact, XAUUSD, USD, Fed, Inflation, Geopolitics.
 - Floating sidebar on X/Twitter via `Show Sidebar`, focused on Assets, Today, and Macro Desk.
@@ -195,5 +196,7 @@ The AI output summarizes:
 - bullish and bearish factors,
 - exact news items that influenced the decision,
 - risk notes.
+
+In the sidebar `Assets` tab, OpenAI can also explain why each detected asset is bullish, bearish, mixed, or neutral based only on the scanned tweets. If OpenAI is unavailable, the sidebar falls back to local reasons.
 
 The key is stored in `chrome.storage.local` for personal use. Do not commit it, share it, or hardcode it in extension files.

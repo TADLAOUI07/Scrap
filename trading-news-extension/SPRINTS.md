@@ -335,7 +335,9 @@ Livrables :
   - context score moyen,
   - risk level,
   - drivers dominants,
-  - tweet le plus fort.
+  - tweet le plus fort,
+  - raisons OpenAI sous chaque actif quand la cle API est disponible,
+  - fallback local si OpenAI est indisponible.
 - Onglet Today :
   - nombre de tweets scannes,
   - average context score,

@@ -199,16 +199,34 @@
     }
 
     try {
+      const assetBiases = await getAssetBiasesForSidebar();
       await chrome.tabs.sendMessage(tab.id, {
         type: "TNF_SHOW_SIDEBAR",
         tweets: getFilteredTweets(),
         rawCount: state.rawTweets.length,
-        sessionBrief: state.sessionBrief
+        sessionBrief: state.sessionBrief,
+        assetBiases
       });
       window.close();
     } catch (error) {
       showMessage("Could not show sidebar. Reload the X/Twitter tab and try again.");
     }
+  }
+
+  async function getAssetBiasesForSidebar() {
+    const tweets = getAiInputTweets().slice(0, 10);
+    if (!tweets.length) return null;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "TNF_ANALYZE_ASSETS",
+        payload: { tweets }
+      });
+      if (response && response.ok) return response.analysis;
+    } catch (error) {
+      // Sidebar will fall back to local reasons if AI asset analysis is unavailable.
+    }
+    return null;
   }
 
   async function saveTweet(tweetId) {
