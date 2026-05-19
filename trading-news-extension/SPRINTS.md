@@ -1,0 +1,400 @@
+# Trading News Filter for X/Twitter - Sprint Plan
+
+Ce fichier explique le decoupage du projet en sprints, l'etat actuel de chaque sprint, ce qui est deja developpe, et comment utiliser l'extension localement.
+
+## Resume d'avancement
+
+Tous les sprints MVP ci-dessous sont developpes dans cette version locale.
+
+Statut global : MVP fonctionnel.
+
+Ce qui est inclus :
+
+- Extension Chrome Manifest V3.
+- Popup complet.
+- Page options/settings.
+- Content script sur `x.com` et `twitter.com`.
+- Background service worker avec `chrome.alarms`.
+- Scan manuel des tweets visibles.
+- Auto-refresh optionnel toutes les 5 minutes.
+- Filtrage local par mots-cles trading.
+- Scoring impact de 0 a 5.
+- Classification categorie, direction bullish/bearish/neutral, resume local.
+- Historique local via `chrome.storage.local`.
+- Deduplication par URL de tweet ou hash du texte.
+- Sidebar flottante optionnelle.
+- Export JSON et CSV.
+- README d'installation et d'utilisation.
+
+## Sprint 1 - Base Chrome Extension MV3
+
+Objectif : creer la structure technique minimale de l'extension.
+
+Livrables :
+
+- `manifest.json`
+- `background.js`
+- `content.js`
+- `popup.html`
+- `popup.js`
+- `popup.css`
+- Permissions MV3 : `storage`, `activeTab`, `scripting`, `alarms`, `tabs`
+- Host permissions : `https://x.com/*`, `https://twitter.com/*`
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `manifest.json`
+- `background.js`
+- `content.js`
+- `popup.html`
+- `popup.js`
+- `popup.css`
+
+## Sprint 2 - Scan manuel des tweets visibles
+
+Objectif : permettre a l'utilisateur de scanner uniquement les tweets visibles sur la page X/Twitter ouverte.
+
+Livrables :
+
+- Bouton `Scan Trading News`.
+- Detection des tweets via les balises `article`.
+- Extraction du texte.
+- Extraction de l'auteur si disponible.
+- Extraction de la date/heure si disponible.
+- Extraction de l'URL du tweet si disponible.
+- Message clair si aucun tweet visible n'est trouve.
+- Aucun auto-scroll.
+- Aucun appel a des endpoints internes X/Twitter.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `content.js`
+- `popup.js`
+
+## Sprint 3 - Filtrage trading local
+
+Objectif : filtrer uniquement les tweets pertinents pour le trading.
+
+Livrables :
+
+- Categories trading :
+  - Gold / XAUUSD
+  - USD / DXY / Yields
+  - Fed / Rates
+  - Inflation
+  - Jobs / US Data
+  - Geopolitics
+  - Oil / Risk sentiment
+  - EURUSD / ECB
+- Detection des mots-cles.
+- Classification locale sans backend.
+- Aucun appel API externe.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `scoring.js`
+- `storage.js`
+
+## Sprint 4 - Scoring d'impact et classification
+
+Objectif : donner une priorite claire aux news importantes.
+
+Livrables :
+
+- Fonction `calculateImpactScore(tweetText)`.
+- Score de 0 a 5.
+- Labels :
+  - `5/5` : High Impact
+  - `4/5` : Important
+  - `3/5` : Medium
+  - `1-2/5` : Low
+- Reason local.
+- Resume court local.
+- Direction simple : `bullish`, `bearish`, `neutral`.
+- Objet final structure comme :
+
+```json
+{
+  "id": "unique_id",
+  "text": "...",
+  "author": "...",
+  "time": "...",
+  "url": "...",
+  "categories": ["Gold / XAUUSD", "Fed / Rates"],
+  "impactScore": 5,
+  "importanceLabel": "High Impact",
+  "reason": "Mentions CPI and USD, which can strongly impact watched trading pairs.",
+  "detectedKeywords": ["cpi", "usd", "gold"],
+  "createdAt": "ISO_DATE"
+}
+```
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `scoring.js`
+
+## Sprint 5 - Popup UX dashboard
+
+Objectif : creer une interface compacte et lisible pour utiliser l'extension.
+
+Livrables :
+
+- Titre `Trading News Filter`.
+- Bouton `Scan Trading News`.
+- Toggle `Auto-refresh every 5 minutes`.
+- Statut `Auto-refresh: ON/OFF`.
+- Nombre de tweets scannes.
+- Nombre de tweets pertinents.
+- Dernier scan.
+- Prochain refresh.
+- Filtres :
+  - All
+  - High Impact only
+  - XAUUSD
+  - USD
+  - Fed
+  - Inflation
+  - Geopolitics
+- Liste des tweets filtres.
+- Bouton `Open Tweet`.
+- Bouton `Save`.
+- Bouton `Clear History`.
+- Export JSON.
+- Export CSV.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `popup.html`
+- `popup.js`
+- `popup.css`
+
+## Sprint 6 - Auto-refresh toutes les 5 minutes
+
+Objectif : permettre un refresh automatique controle, non agressif, active uniquement par l'utilisateur.
+
+Livrables :
+
+- Option desactivee par defaut.
+- Toggle dans le popup.
+- Option dans la page settings.
+- Sauvegarde dans `chrome.storage.local`.
+- Utilisation de `chrome.alarms`.
+- Intervalle minimum : 5 minutes.
+- Refresh uniquement de l'onglet actif.
+- Refresh uniquement si l'URL est `x.com` ou `twitter.com`.
+- Aucun nouvel onglet ouvert automatiquement.
+- Apres refresh, attente du chargement de la page.
+- Scan automatique une seule fois apres refresh.
+- Deduplication avant sauvegarde.
+- Desactivation possible a tout moment.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `background.js`
+- `popup.js`
+- `options.js`
+- `storage.js`
+
+## Sprint 7 - Historique local et deduplication
+
+Objectif : conserver localement les news pertinentes sans doublons.
+
+Livrables :
+
+- `getHistory()`
+- `saveTweet()`
+- `saveTweets()`
+- `clearHistory()`
+- `deduplicateTweets()`
+- Stockage via `chrome.storage.local`.
+- Deduplication par URL si disponible.
+- Sinon deduplication par hash simple du texte.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `storage.js`
+- `utils.js`
+
+## Sprint 8 - Sidebar flottante X/Twitter
+
+Objectif : afficher les news pertinentes directement dans la page X/Twitter.
+
+Livrables :
+
+- Bouton `Show Sidebar`.
+- Sidebar positionnee a droite.
+- Largeur 360px.
+- Hauteur maximale 80vh.
+- Dark mode compatible.
+- Bouton fermer.
+- Tweets high impact en haut.
+- Score visible.
+- Bouton `Open Tweet`.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `content.js`
+- `popup.js`
+
+## Sprint 9 - Page Options / Settings
+
+Objectif : rendre l'extension configurable sans modifier le code.
+
+Livrables :
+
+- `options.html`
+- Modifier les mots-cles par categorie.
+- Activer/desactiver les categories.
+- Modifier le score minimum a afficher.
+- Activer/desactiver auto-refresh.
+- Afficher l'etat auto-refresh.
+- Export JSON des settings.
+- Import JSON des settings.
+- Reset settings.
+- Theme : system / light / dark.
+- Future AI Backend URL, desactive par defaut.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `options.html`
+- `options.js`
+- `options.css`
+
+## Sprint 10 - Documentation et securite
+
+Objectif : documenter l'installation, l'utilisation, les limites et les regles de securite.
+
+Livrables :
+
+- `README.md`
+- Description projet.
+- Installation locale dans Chrome.
+- Utilisation.
+- Activation/desactivation auto-refresh.
+- Limites connues.
+- Roadmap future.
+- Avertissement trading.
+- Avertissement X/Twitter.
+- Pas de cle API dans le code.
+- Pas d'endpoints internes X/Twitter.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `README.md`
+- `SPRINTS.md`
+
+## Comment installer l'extension
+
+1. Ouvrir Chrome.
+2. Aller sur `chrome://extensions`.
+3. Activer `Developer Mode`.
+4. Cliquer sur `Load unpacked`.
+5. Selectionner le dossier :
+
+```text
+/Users/zakariaeelouazzani/Documents/scrap/trading-news-extension
+```
+
+6. Epingler l'extension si besoin.
+
+## Comment tester le scan manuel
+
+1. Ouvrir une page X/Twitter, par exemple :
+
+```text
+https://x.com/nom_du_compte
+```
+
+2. Cliquer sur l'icone de l'extension.
+3. Cliquer sur `Scan Trading News`.
+4. Verifier :
+   - nombre de tweets scannes,
+   - nombre de tweets pertinents,
+   - cartes de news,
+   - score,
+   - categories,
+   - keywords,
+   - bouton `Open Tweet`.
+
+## Comment tester l'auto-refresh
+
+1. Ouvrir une page `x.com` ou `twitter.com`.
+2. Ouvrir le popup.
+3. Activer `Auto-refresh every 5 minutes`.
+4. Verifier que le statut passe a `Auto-refresh: ON`.
+5. Attendre 5 minutes.
+6. L'onglet actif X/Twitter est recharge.
+7. Apres chargement, l'extension scanne une seule fois les tweets visibles.
+8. Les tweets pertinents non dupliques sont sauvegardes.
+
+Pour desactiver :
+
+- couper le toggle dans le popup,
+- ou cliquer `Disable auto-refresh now`,
+- ou aller dans la page options et desactiver l'option.
+
+## Comment modifier les mots-cles
+
+1. Aller dans les options de l'extension.
+2. Modifier les mots-cles dans la categorie souhaitee.
+3. Les mots-cles doivent etre separes par des virgules.
+4. Cliquer sur `Save Settings`.
+5. Relancer un scan.
+
+## Comment exporter les news
+
+Depuis le popup :
+
+- Cliquer `Export JSON` pour exporter les tweets filtres en JSON.
+- Cliquer `Export CSV` pour exporter les tweets filtres en CSV.
+
+## Comment nettoyer l'historique
+
+Depuis le popup :
+
+1. Cliquer `Clear History`.
+2. L'historique local est vide.
+
+## Ce qui n'est pas encore developpe
+
+Ces elements sont dans la roadmap future, pas dans le MVP actuel :
+
+- Alertes Telegram via webhook personnel.
+- Backend local Node.js ou Python.
+- Resume IA via endpoint personnel.
+- Dashboard web complet.
+- Integration officielle X API.
+- Scoring base sur calendrier economique.
+- Detection bullish/bearish avancee pour XAUUSD.
+- Filtre par compte Twitter specifique.
+- Notifications desktop Chrome.
+
+## Notes importantes
+
+- L'extension lit uniquement les tweets visibles sur la page ouverte.
+- Elle ne fait pas de scraping agressif.
+- Elle ne contourne pas les protections de X/Twitter.
+- Elle n'utilise pas les endpoints internes de X/Twitter.
+- Elle ne fait pas d'auto-scroll.
+- Elle ne garantit aucun signal de trading.
+- Elle ne remplace pas l'analyse humaine.

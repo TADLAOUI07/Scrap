@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trading News Filter Settings</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <main class="settings">
+      <header>
+        <h1>Trading News Filter Settings</h1>
+        <p>Local settings only. No API key is required and no backend is used by default.</p>
+      </header>
+
+      <section class="panel">
+        <h2>General</h2>
+        <label class="row">
+          <span>Auto-refresh every 5 minutes</span>
+          <input id="autoRefreshEnabled" type="checkbox">
+        </label>
+        <p id="autoRefreshState" class="state-text">Auto-refresh: OFF</p>
+
+        <label>
+          Minimum score to display
+          <input id="minimumScore" type="number" min="0" max="5" step="1">
+        </label>
+
+        <label>
+          Theme
+          <select id="theme">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+
+        <label>
+          Future AI Backend URL
+          <input id="aiBackendUrl" type="url" placeholder="Disabled by default">
+        </label>
+      </section>
+
+      <section class="panel">
+        <h2>Trading Categories</h2>
+        <div id="categoryList" class="category-list"></div>
+      </section>
+
+      <section class="panel actions">
+        <button id="saveSettings" class="primary">Save Settings</button>
+        <button id="exportSettings" class="secondary">Export JSON</button>
+        <label class="import-button">
+          Import JSON
+          <input id="importSettings" type="file" accept="application/json">
+        </label>
+        <button id="resetSettings" class="danger">Reset Settings</button>
+      </section>
+
+      <div id="message" class="message" hidden></div>
+    </main>
+
+    <script src="utils.js"></script>
+    <script src="scoring.js"></script>
+    <script src="storage.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

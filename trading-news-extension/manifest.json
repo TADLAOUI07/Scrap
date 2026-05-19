@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Trading News Filter for X/Twitter",
+  "version": "1.0.0",
+  "description": "Scan visible X/Twitter tweets locally, filter trading-relevant news, score impact, and save useful items.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "alarms",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*"
+  ],
+  "action": {
+    "default_title": "Trading News Filter",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": [
+        "utils.js",
+        "scoring.js",
+        "storage.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html"
+}

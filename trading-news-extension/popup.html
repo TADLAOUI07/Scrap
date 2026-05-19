@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trading News Filter</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="popup">
+      <header class="header">
+        <div>
+          <h1>Trading News Filter</h1>
+          <p id="pageStatus">Open X/Twitter to scan visible tweets.</p>
+        </div>
+        <span class="live-dot" aria-hidden="true"></span>
+      </header>
+
+      <section class="controls">
+        <button id="scanButton" class="primary">Scan Trading News</button>
+        <button id="sidebarButton" class="secondary">Show Sidebar</button>
+      </section>
+
+      <section class="refresh-card">
+        <label class="toggle-row">
+          <span>
+            <strong>Auto-refresh every 5 minutes</strong>
+            <small id="autoStatus">Auto-refresh: OFF</small>
+          </span>
+          <input id="autoRefreshToggle" type="checkbox" role="switch">
+        </label>
+        <button id="disableAutoRefresh" class="link-button">Disable auto-refresh now</button>
+      </section>
+
+      <section class="stats">
+        <div><span id="scannedCount">0</span><small>scanned</small></div>
+        <div><span id="relevantCount">0</span><small>relevant</small></div>
+        <div><span id="lastScan">Never</span><small>last scan</small></div>
+        <div><span id="nextRefresh">Not scheduled</span><small>next refresh</small></div>
+      </section>
+
+      <section class="filters" aria-label="Filters">
+        <button class="filter active" data-filter="all">All</button>
+        <button class="filter" data-filter="high">High Impact only</button>
+        <button class="filter" data-filter="xauusd">XAUUSD</button>
+        <button class="filter" data-filter="usd">USD</button>
+        <button class="filter" data-filter="fed">Fed</button>
+        <button class="filter" data-filter="inflation">Inflation</button>
+        <button class="filter" data-filter="geopolitics">Geopolitics</button>
+      </section>
+
+      <section class="actions">
+        <button id="exportJson" class="secondary">Export JSON</button>
+        <button id="exportCsv" class="secondary">Export CSV</button>
+        <button id="clearHistory" class="danger">Clear History</button>
+      </section>
+
+      <div id="message" class="message" hidden></div>
+      <section id="tweetList" class="tweet-list" aria-live="polite"></section>
+    </main>
+
+    <script src="utils.js"></script>
+    <script src="scoring.js"></script>
+    <script src="storage.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
