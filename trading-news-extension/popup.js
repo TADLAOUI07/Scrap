@@ -47,6 +47,8 @@
       "message",
       "exportJson",
       "exportCsv",
+      "exportRawJson",
+      "exportRawCsv",
       "clearHistory"
     ].forEach((id) => {
       els[id] = document.getElementById(id);
@@ -64,6 +66,8 @@
     els.disableAutoRefresh.addEventListener("click", () => setAutoRefresh(false));
     els.exportJson.addEventListener("click", exportJson);
     els.exportCsv.addEventListener("click", exportCsv);
+    els.exportRawJson.addEventListener("click", exportRawJson);
+    els.exportRawCsv.addEventListener("click", exportRawCsv);
     els.clearHistory.addEventListener("click", clearHistory);
     els.filters.forEach((button) => {
       button.addEventListener("click", () => {
@@ -176,11 +180,20 @@
 
   function exportJson() {
     const payload = JSON.stringify(getFilteredTweets(), null, 2);
-    TNFUtils.downloadText(`trading-news-${Date.now()}.json`, payload, "application/json");
+    TNFUtils.downloadText(`trading-news-filtered-${Date.now()}.json`, payload, "application/json");
   }
 
   function exportCsv() {
-    TNFUtils.downloadText(`trading-news-${Date.now()}.csv`, TNFUtils.toCsv(getFilteredTweets()), "text/csv");
+    TNFUtils.downloadText(`trading-news-filtered-${Date.now()}.csv`, TNFUtils.toCsv(getFilteredTweets()), "text/csv");
+  }
+
+  function exportRawJson() {
+    const payload = JSON.stringify(state.rawTweets || [], null, 2);
+    TNFUtils.downloadText(`trading-news-scan-${Date.now()}.json`, payload, "application/json");
+  }
+
+  function exportRawCsv() {
+    TNFUtils.downloadText(`trading-news-scan-${Date.now()}.csv`, TNFUtils.toCsv(state.rawTweets || []), "text/csv");
   }
 
   async function analyzeWithAi(sourceTweets) {

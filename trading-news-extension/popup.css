@@ -90,7 +90,11 @@ p {
 }
 
 .actions {
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
+}
+
+.actions .danger {
+  grid-column: 1 / -1;
 }
 
 button {

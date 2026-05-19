@@ -99,6 +99,13 @@ The popup can export filtered news as:
 - JSON
 - CSV
 
+It can also export the raw latest scan as:
+
+- Scan JSON
+- Scan CSV
+
+Filtered exports contain only tweets that matched your local trading filters. Scan exports contain the raw tweets captured during the latest slow scan, even if they did not match keywords.
+
 Exports are generated locally in the browser from locally stored data.
 
 ## Known Limits
