@@ -10,7 +10,7 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 - The scan returns to the top of the opened X/Twitter page, scrolls slowly, and stops after 10 unique tweets.
 - Optional auto-refresh with a configurable interval, disabled by default.
 - Minimum auto-refresh interval: 1 minute.
-- Auto-refresh only runs on the active tab when it is on `x.com` or `twitter.com`.
+- Auto-refresh can target a watched X/Twitter tab, so it can continue after you move to another tab.
 - Reads visible tweet `article` elements only.
 - Local keyword categories for XAUUSD, USD, Fed, inflation, jobs data, geopolitics, oil/risk sentiment, and EURUSD/ECB.
 - Market coverage for Forex, crypto, stocks, indices, commodities, and economic calendar terms.
@@ -22,6 +22,7 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 - Popup filters: All, High Impact, XAUUSD, USD, Fed, Inflation, Geopolitics.
 - Floating sidebar on X/Twitter via `Show Sidebar`.
 - Local history with deduplication by tweet URL or text hash.
+- Local Dynamic Journal with `Save to Journal` for watch-only market context.
 - JSON and CSV export.
 - Options page for keywords, categories, minimum score, theme, auto-refresh, import/export settings, and future AI Backend URL.
 
@@ -42,7 +43,8 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 4. Review the filtered tweets in the popup.
 5. Use filters to focus on high impact, XAUUSD, USD, Fed, Inflation, or Geopolitics.
 6. Click `Open Tweet` when a tweet URL is available.
-7. Click `Show Sidebar` to display relevant trading news directly on the X/Twitter page.
+7. Click `Save to Journal` to save a tweet as watch-only context.
+8. Click `Show Sidebar` to display relevant trading news directly on the X/Twitter page.
 
 ## Auto-Refresh
 
@@ -52,23 +54,25 @@ To enable it:
 
 1. Open the popup.
 2. Set a refresh interval in minutes.
-3. Enable `Auto-refresh visible page`.
-4. Keep the active tab on `x.com` or `twitter.com`.
+3. On the X/Twitter page you want to monitor, click `Watch This Tab`.
+4. Enable `Auto-refresh visible page`.
+5. You can move to another tab after the watched tab is saved.
 
 When enabled, the extension:
 
 1. Waits for the configured interval.
-2. Refreshes only the active X/Twitter tab.
+2. Refreshes only the watched X/Twitter tab.
 3. Waits briefly for tweets to load.
 4. Slowly scans the latest 10 unique tweets.
 5. Saves only new relevant non-duplicate tweets.
 
-The interval cannot be lower than 1 minute. The extension still refreshes only the selected X/Twitter tab and scans only the latest 10 tweets with slow scrolling.
+The interval cannot be lower than 1 minute. The extension still refreshes only the watched X/Twitter tab and scans only the latest 10 tweets with slow scrolling.
 
 To disable it:
 
 - Turn off the toggle in the popup, or
 - Click `Disable auto-refresh now`, or
+- Click `Stop Watching` to clear the watched X/Twitter tab, or
 - Disable it from the options page.
 
 The extension never refreshes every few seconds, never opens a new tab, and never refreshes non-X/Twitter pages.
@@ -92,6 +96,19 @@ You can configure:
 - Optional AI Backend URL for future backend routing.
 - Export/import settings JSON.
 - Reset settings.
+
+## Dynamic Journal
+
+The journal is local-first and stored in `chrome.storage.local`.
+
+Current MVP behavior:
+
+- `Save to Journal` creates a watch-only journal entry from a tweet.
+- The entry stores the linked tweet id, instrument, context score, risk tone, macro driver, affected assets, and notes.
+- The sidebar `Journal` tab displays recent journal entries.
+- The popup can export journal data as JSON or CSV.
+
+The journal does not give buy/sell signals. Full edit/delete forms and filters are planned for the next journal sprint.
 
 ## Cockpit Sprint Plan
 

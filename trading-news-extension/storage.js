@@ -5,6 +5,7 @@
   const HISTORY_KEY = "tnf_history";
   const LAST_SCAN_KEY = "tnf_last_scan";
   const SESSION_BRIEF_KEY = "tnf_session_brief";
+  const JOURNAL_KEY = "tnf_journal";
   const DEFAULT_AI_ANALYSIS_PROMPT = [
     "Analyze the supplied X/Twitter news like a professional macro trader.",
     "Focus on market-moving impact for the selected pair or market.",
@@ -58,6 +59,8 @@
     lastRefreshAt: "",
     lastRefreshStatus: "Auto-refresh is off.",
     autoRefreshTargetTabId: null,
+    autoRefreshTargetUrl: "",
+    autoRefreshTargetTitle: "",
     minimumScore: 1,
     theme: "dark",
     selectedPair: "XAUUSD",
@@ -204,6 +207,34 @@
     return brief;
   }
 
+  async function getJournal() {
+    const data = await getFromStorage([JOURNAL_KEY]);
+    return Array.isArray(data[JOURNAL_KEY]) ? data[JOURNAL_KEY] : [];
+  }
+
+  async function setJournal(entries) {
+    const cleanEntries = globalThis.TNFUtils.uniqueById(entries).sort((a, b) => {
+      return Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0);
+    });
+    await setInStorage({ [JOURNAL_KEY]: cleanEntries });
+    return cleanEntries;
+  }
+
+  async function saveJournalEntry(entry) {
+    const journal = await getJournal();
+    const nextEntry = {
+      ...entry,
+      id: entry.id || globalThis.TNFUtils.simpleHash(`${entry.createdAt || Date.now()}:${(entry.linkedTweetIds || []).join(",")}:${entry.notes || ""}`),
+      createdAt: entry.createdAt || new Date().toISOString()
+    };
+    return setJournal([nextEntry, ...journal]);
+  }
+
+  async function clearJournal() {
+    await setInStorage({ [JOURNAL_KEY]: [] });
+    return [];
+  }
+
   function deduplicateTweets(tweets) {
     return globalThis.TNFUtils.uniqueById(tweets);
   }
@@ -213,6 +244,7 @@
     HISTORY_KEY,
     LAST_SCAN_KEY,
     SESSION_BRIEF_KEY,
+    JOURNAL_KEY,
     DEFAULT_AI_ANALYSIS_PROMPT,
     DEFAULT_AI_KEYWORDS,
     DEFAULT_SETTINGS,
@@ -228,6 +260,10 @@
     setLastScan,
     getSessionBrief,
     setSessionBrief,
+    getJournal,
+    setJournal,
+    saveJournalEntry,
+    clearJournal,
     deduplicateTweets
   };
 })();

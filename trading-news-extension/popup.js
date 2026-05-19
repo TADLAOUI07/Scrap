@@ -5,6 +5,7 @@
     tweets: [],
     rawTweets: [],
     history: [],
+    journal: [],
     filter: "all",
     settings: null,
     sessionBrief: null
@@ -20,6 +21,7 @@
     state.settings = await TNFStorage.getSettings();
     state.settings = await migrateAiFirstSettings(state.settings);
     state.history = await TNFStorage.getHistory();
+    state.journal = await TNFStorage.getJournal();
     state.sessionBrief = await TNFStorage.getSessionBrief();
     const lastScan = await TNFStorage.getLastScan();
     state.tweets = lastScan && Array.isArray(lastScan.tweets) ? lastScan.tweets : state.history;
@@ -39,6 +41,9 @@
       "autoRefreshToggle",
       "refreshMinutes",
       "autoStatus",
+      "watchedTabStatus",
+      "watchTabButton",
+      "clearWatchTabButton",
       "disableAutoRefresh",
       "pairSelect",
       "aiAnalyzeButton",
@@ -55,6 +60,8 @@
       "exportCsv",
       "exportRawJson",
       "exportRawCsv",
+      "exportJournalJson",
+      "exportJournalCsv",
       "clearHistory"
     ].forEach((id) => {
       els[id] = document.getElementById(id);
@@ -67,6 +74,8 @@
     els.sidebarButton.addEventListener("click", showSidebar);
     els.autoRefreshToggle.addEventListener("change", () => setAutoRefresh(els.autoRefreshToggle.checked));
     els.refreshMinutes.addEventListener("change", savePopupSettings);
+    els.watchTabButton.addEventListener("click", watchCurrentTab);
+    els.clearWatchTabButton.addEventListener("click", clearWatchedTab);
     els.pairSelect.addEventListener("change", savePopupSettings);
     els.aiAnalyzeButton.addEventListener("click", analyzeWithAi);
     els.sessionBriefButton.addEventListener("click", generateSessionBrief);
@@ -75,6 +84,8 @@
     els.exportCsv.addEventListener("click", exportCsv);
     els.exportRawJson.addEventListener("click", exportRawJson);
     els.exportRawCsv.addEventListener("click", exportRawCsv);
+    els.exportJournalJson.addEventListener("click", exportJournalJson);
+    els.exportJournalCsv.addEventListener("click", exportJournalCsv);
     els.clearHistory.addEventListener("click", clearHistory);
     els.filters.forEach((button) => {
       button.addEventListener("click", () => {
@@ -103,8 +114,8 @@
   async function checkActivePage() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     els.pageStatus.textContent = tab && TNFUtils.isTwitterUrl(tab.url)
-      ? "Ready to slow-scan the latest 10 tweets on this X/Twitter page."
-      : "Open x.com or twitter.com to scan the latest 10 tweets.";
+      ? "Ready to slow-scan this X/Twitter page. You can also watch this tab for background refresh."
+      : "Open x.com or twitter.com to scan or attach a watched tab.";
   }
 
   async function runManualScan() {
@@ -164,6 +175,30 @@
     renderTweets();
   }
 
+  async function watchCurrentTab() {
+    const response = await chrome.runtime.sendMessage({ type: "TNF_WATCH_CURRENT_TAB" });
+    if (!response || !response.ok) {
+      showMessage(response && response.error ? response.error : "Could not watch this tab.");
+      return;
+    }
+
+    state.settings = response.settings;
+    renderSettings();
+    showMessage("This X/Twitter tab is now watched. Auto-refresh can continue when you move to another tab.");
+  }
+
+  async function clearWatchedTab() {
+    const response = await chrome.runtime.sendMessage({ type: "TNF_CLEAR_WATCHED_TAB" });
+    if (!response || !response.ok) {
+      showMessage("Could not clear watched tab.");
+      return;
+    }
+
+    state.settings = response.settings;
+    renderSettings();
+    showMessage("Watched tab cleared.");
+  }
+
   async function showSidebar() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.id || !TNFUtils.isTwitterUrl(tab.url)) {
@@ -190,6 +225,38 @@
     const result = await TNFStorage.saveTweet(tweet);
     state.history = result.history;
     showMessage(result.saved ? "Tweet saved." : "Tweet already exists in history.");
+  }
+
+  async function saveTweetToJournal(tweetId) {
+    const tweet = state.tweets.find((item) => item.id === tweetId);
+    if (!tweet) return;
+
+    const entry = buildJournalEntry(tweet);
+    state.journal = await TNFStorage.saveJournalEntry(entry);
+    showMessage("Saved to Journal as watch-only context.");
+  }
+
+  function buildJournalEntry(tweet) {
+    const instrument = (tweet.affectedAssets && tweet.affectedAssets[0]) || state.settings.selectedPair || "XAUUSD";
+    return {
+      id: TNFUtils.simpleHash(`journal:${tweet.id}:${Date.now()}`),
+      createdAt: new Date().toISOString(),
+      linkedTweetIds: [tweet.id],
+      instrument,
+      tradeIdea: "watch_only",
+      setup: "news_reaction",
+      confidence: 3,
+      emotion: "calm",
+      followedPlan: true,
+      result: "pending",
+      notes: tweet.summary || tweet.text || "",
+      marketContextSnapshot: {
+        riskTone: tweet.contextRiskLevel || "unknown",
+        mainDriver: tweet.macroTheme || "",
+        contextScore: tweet.contextScoreValue || 0,
+        affectedAssets: tweet.affectedAssets || []
+      }
+    };
   }
 
   async function askAiForTweet(tweetId) {
@@ -334,6 +401,37 @@
     TNFUtils.downloadText(`trading-news-scan-${Date.now()}.csv`, TNFUtils.toCsv(state.rawTweets || []), "text/csv");
   }
 
+  async function exportJournalJson() {
+    state.journal = await TNFStorage.getJournal();
+    const payload = JSON.stringify(state.journal, null, 2);
+    TNFUtils.downloadText(`trading-news-journal-${Date.now()}.json`, payload, "application/json");
+  }
+
+  async function exportJournalCsv() {
+    state.journal = await TNFStorage.getJournal();
+    TNFUtils.downloadText(`trading-news-journal-${Date.now()}.csv`, TNFUtils.toCsv(flattenJournalEntries(state.journal)), "text/csv");
+  }
+
+  function flattenJournalEntries(entries) {
+    return (entries || []).map((entry) => ({
+      id: entry.id,
+      createdAt: entry.createdAt,
+      linkedTweetIds: (entry.linkedTweetIds || []).join(" | "),
+      instrument: entry.instrument,
+      tradeIdea: entry.tradeIdea,
+      setup: entry.setup,
+      confidence: entry.confidence,
+      emotion: entry.emotion,
+      followedPlan: entry.followedPlan,
+      result: entry.result,
+      notes: entry.notes,
+      riskTone: entry.marketContextSnapshot && entry.marketContextSnapshot.riskTone,
+      mainDriver: entry.marketContextSnapshot && entry.marketContextSnapshot.mainDriver,
+      contextScore: entry.marketContextSnapshot && entry.marketContextSnapshot.contextScore,
+      affectedAssets: entry.marketContextSnapshot && (entry.marketContextSnapshot.affectedAssets || []).join(" | ")
+    }));
+  }
+
   async function persistCurrentScanState() {
     const lastScan = await TNFStorage.getLastScan();
     if (!lastScan) return;
@@ -424,9 +522,23 @@
     els.autoRefreshToggle.checked = enabled;
     els.refreshMinutes.value = state.settings.autoRefreshMinutes || 5;
     els.autoStatus.textContent = `Auto-refresh: ${enabled ? "ON" : "OFF"} | every ${state.settings.autoRefreshMinutes || 5} min`;
+    els.watchedTabStatus.textContent = state.settings.autoRefreshTargetUrl
+      ? formatWatchedTab(state.settings.autoRefreshTargetTitle, state.settings.autoRefreshTargetUrl)
+      : "No watched tab selected.";
     els.nextRefresh.textContent = enabled && state.settings.nextRefreshAt
       ? TNFUtils.formatDateTime(state.settings.nextRefreshAt)
       : "Not scheduled";
+  }
+
+  function formatWatchedTab(title, url) {
+    const cleanTitle = String(title || "").replace(/\s+/g, " ").trim();
+    if (cleanTitle) return cleanTitle.length > 58 ? `${cleanTitle.slice(0, 55)}...` : cleanTitle;
+    try {
+      const parsed = new URL(url);
+      return `${parsed.hostname}${parsed.pathname}`;
+    } catch (error) {
+      return url || "Watched X/Twitter tab";
+    }
   }
 
   function renderPairOptions() {
@@ -546,6 +658,7 @@
         <div class="tweet-buttons">
           ${tweet.url ? `<a href="${escapeAttribute(tweet.url)}" target="_blank" rel="noreferrer">Open Tweet</a>` : ""}
           <button type="button" data-save="${escapeAttribute(tweet.id)}">Save</button>
+          <button type="button" data-journal="${escapeAttribute(tweet.id)}">Save to Journal</button>
           <button type="button" data-ask-ai="${escapeAttribute(tweet.id)}">Ask AI</button>
         </div>
         <div class="tweet-ai" data-ai-result="${escapeAttribute(tweet.id)}">${renderTweetAiAnalysis(tweet)}</div>
@@ -553,6 +666,8 @@
       card.querySelector(".tweet-text").textContent = tweet.text;
       const saveButton = card.querySelector("[data-save]");
       if (saveButton) saveButton.addEventListener("click", () => saveTweet(tweet.id));
+      const journalButton = card.querySelector("[data-journal]");
+      if (journalButton) journalButton.addEventListener("click", () => saveTweetToJournal(tweet.id));
       const askAiButton = card.querySelector("[data-ask-ai]");
       if (askAiButton) askAiButton.addEventListener("click", () => askAiForTweet(tweet.id));
       els.tweetList.appendChild(card);

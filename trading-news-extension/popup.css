@@ -157,6 +157,40 @@ button:disabled {
   text-align: left;
 }
 
+.watch-card {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  background: #0c1118;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.watch-card strong {
+  display: block;
+  font-size: 13px;
+}
+
+.watch-card small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.watch-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.watch-actions button {
+  min-height: 34px;
+  font-size: 12px;
+}
+
 .refresh-card,
 .terminal-card,
 .stats div,

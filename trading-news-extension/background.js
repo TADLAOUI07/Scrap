@@ -33,6 +33,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "TNF_WATCH_CURRENT_TAB") {
+    watchCurrentTwitterTab().then(sendResponse);
+    return true;
+  }
+
+  if (message.type === "TNF_CLEAR_WATCHED_TAB") {
+    clearWatchedTab().then(sendResponse);
+    return true;
+  }
+
   if (message.type === "TNF_SCAN_ACTIVE_TAB") {
     scanActiveTab().then(sendResponse);
     return true;
@@ -70,10 +80,10 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     return;
   }
 
-  const activeTab = await getRefreshTargetTab(settings);
-  if (!activeTab || !activeTab.id || !TNFUtils.isTwitterUrl(activeTab.url || "")) {
+  const targetTab = await getRefreshTargetTab(settings);
+  if (!targetTab || !targetTab.id || !TNFUtils.isTwitterUrl(targetTab.url || "")) {
     await TNFStorage.saveSettings({
-      lastRefreshStatus: "Skipped refresh: no active X/Twitter tab found.",
+      lastRefreshStatus: "Skipped refresh: watched X/Twitter tab is not available.",
       nextRefreshAt: nextRefreshIso(settings.autoRefreshMinutes || MIN_REFRESH_MINUTES)
     });
     scheduleAutoRefresh(settings.autoRefreshMinutes || MIN_REFRESH_MINUTES);
@@ -82,15 +92,18 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
   await chrome.storage.local.set({
     tnf_pending_auto_scan: {
-      tabId: activeTab.id,
+      tabId: targetTab.id,
       requestedAt: new Date().toISOString()
     }
   });
 
-  chrome.tabs.reload(activeTab.id);
+  chrome.tabs.reload(targetTab.id);
   await TNFStorage.saveSettings({
     lastRefreshAt: new Date().toISOString(),
-    lastRefreshStatus: `Refreshed ${activeTab.url || "X/Twitter tab"}.`
+    lastRefreshStatus: `Refreshed watched tab: ${targetTab.url || "X/Twitter tab"}.`,
+    autoRefreshTargetTabId: targetTab.id,
+    autoRefreshTargetUrl: targetTab.url || "",
+    autoRefreshTargetTitle: targetTab.title || ""
   });
   scheduleAutoRefresh(settings.autoRefreshMinutes || MIN_REFRESH_MINUTES);
 });
@@ -124,16 +137,21 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 async function handleAutoRefreshToggle(enabled, minutes) {
   const safeMinutes = normalizeRefreshMinutes(minutes);
-  const targetTab = enabled ? await findActiveTwitterTab() : null;
+  const currentSettings = await TNFStorage.getSettings();
+  const activeTab = enabled ? await findActiveTwitterTab() : null;
+  const existingTarget = enabled ? await getStoredTargetTab(currentSettings) : null;
+  const targetTab = activeTab || existingTarget;
   const settings = await TNFStorage.saveSettings({
     autoRefreshEnabled: enabled,
     autoRefreshMinutes: safeMinutes,
     autoRefreshTargetTabId: targetTab && targetTab.id ? targetTab.id : null,
+    autoRefreshTargetUrl: targetTab && targetTab.url ? targetTab.url : "",
+    autoRefreshTargetTitle: targetTab && targetTab.title ? targetTab.title : "",
     nextRefreshAt: enabled ? nextRefreshIso(safeMinutes) : "",
     lastRefreshStatus: enabled
       ? targetTab && targetTab.id
-        ? `Auto-refresh armed for ${targetTab.url || "current X/Twitter tab"}.`
-        : "Auto-refresh is on, but no X/Twitter tab is active yet."
+        ? `Auto-refresh armed for watched tab: ${targetTab.url || "X/Twitter tab"}.`
+        : "Auto-refresh is on, but no X/Twitter tab is watched yet."
       : "Auto-refresh is off."
   });
 
@@ -177,7 +195,11 @@ async function scanActiveTab() {
 
   const settings = await TNFStorage.getSettings();
   if (settings.autoRefreshEnabled) {
-    await TNFStorage.saveSettings({ autoRefreshTargetTabId: activeTab.id });
+    await TNFStorage.saveSettings({
+      autoRefreshTargetTabId: activeTab.id,
+      autoRefreshTargetUrl: activeTab.url || "",
+      autoRefreshTargetTitle: activeTab.title || ""
+    });
   }
 
   try {
@@ -219,17 +241,32 @@ async function getAutoRefreshStatus() {
     nextRefreshAt: alarm && alarm.scheduledTime ? new Date(alarm.scheduledTime).toISOString() : settings.nextRefreshAt,
     lastRefreshAt: settings.lastRefreshAt,
     lastRefreshStatus: settings.lastRefreshStatus,
-    targetTabId: settings.autoRefreshTargetTabId
+    targetTabId: settings.autoRefreshTargetTabId,
+    targetUrl: settings.autoRefreshTargetUrl,
+    targetTitle: settings.autoRefreshTargetTitle
   };
 }
 
 async function getRefreshTargetTab(settings) {
+  const storedTarget = await getStoredTargetTab(settings);
+  if (storedTarget) {
+    return storedTarget;
+  }
+
   const activeTab = await findActiveTwitterTab();
   if (activeTab) {
-    await TNFStorage.saveSettings({ autoRefreshTargetTabId: activeTab.id });
+    await TNFStorage.saveSettings({
+      autoRefreshTargetTabId: activeTab.id,
+      autoRefreshTargetUrl: activeTab.url || "",
+      autoRefreshTargetTitle: activeTab.title || ""
+    });
     return activeTab;
   }
 
+  return null;
+}
+
+async function getStoredTargetTab(settings) {
   if (settings.autoRefreshTargetTabId) {
     try {
       const target = await chrome.tabs.get(settings.autoRefreshTargetTabId);
@@ -245,10 +282,34 @@ async function getRefreshTargetTab(settings) {
 async function findActiveTwitterTab() {
   const activeTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   const activeTwitter = activeTabs.find((tab) => tab && tab.id && TNFUtils.isTwitterUrl(tab.url || ""));
-  if (activeTwitter) return activeTwitter;
+  return activeTwitter || null;
+}
 
-  const twitterTabs = await chrome.tabs.query({ url: ["https://x.com/*", "https://twitter.com/*"] });
-  return twitterTabs.find((tab) => tab && tab.active) || twitterTabs[0] || null;
+async function watchCurrentTwitterTab() {
+  const targetTab = await findActiveTwitterTab();
+  if (!targetTab || !targetTab.id || !TNFUtils.isTwitterUrl(targetTab.url || "")) {
+    return { ok: false, error: "Open the X/Twitter tab you want to watch, then click Watch This Tab." };
+  }
+
+  const settings = await TNFStorage.saveSettings({
+    autoRefreshTargetTabId: targetTab.id,
+    autoRefreshTargetUrl: targetTab.url || "",
+    autoRefreshTargetTitle: targetTab.title || "",
+    lastRefreshStatus: `Watching ${targetTab.url || "current X/Twitter tab"}.`
+  });
+
+  return { ok: true, settings };
+}
+
+async function clearWatchedTab() {
+  const settings = await TNFStorage.saveSettings({
+    autoRefreshTargetTabId: null,
+    autoRefreshTargetUrl: "",
+    autoRefreshTargetTitle: "",
+    lastRefreshStatus: "Watched X/Twitter tab cleared."
+  });
+
+  return { ok: true, settings };
 }
 
 async function analyzeMarketNews(payload) {

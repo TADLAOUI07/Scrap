@@ -41,6 +41,16 @@
           Refresh interval in minutes
           <input id="refreshMinutes" type="number" min="1" step="1">
         </label>
+        <div class="watch-card">
+          <div>
+            <strong>Watched X/Twitter tab</strong>
+            <small id="watchedTabStatus">No watched tab selected.</small>
+          </div>
+          <div class="watch-actions">
+            <button id="watchTabButton" class="secondary" type="button">Watch This Tab</button>
+            <button id="clearWatchTabButton" class="secondary" type="button">Stop Watching</button>
+          </div>
+        </div>
         <button id="disableAutoRefresh" class="link-button">Disable auto-refresh now</button>
       </section>
 
@@ -86,6 +96,8 @@
         <button id="exportCsv" class="secondary">Export Filtered CSV</button>
         <button id="exportRawJson" class="secondary">Export Scan JSON</button>
         <button id="exportRawCsv" class="secondary">Export Scan CSV</button>
+        <button id="exportJournalJson" class="secondary">Export Journal JSON</button>
+        <button id="exportJournalCsv" class="secondary">Export Journal CSV</button>
         <button id="clearHistory" class="danger">Clear History</button>
       </section>
 

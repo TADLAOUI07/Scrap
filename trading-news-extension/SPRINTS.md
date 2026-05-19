@@ -426,6 +426,72 @@ Fichiers principaux :
 - `options.css`
 - `content.js`
 
+## Sprint 13 - Watched X/Twitter Tab
+
+Objectif : permettre a l'auto-refresh de continuer sur une page X/Twitter surveillee meme si l'utilisateur passe sur un autre onglet.
+
+Livrables :
+
+- Bouton `Watch This Tab` dans le popup.
+- Bouton `Stop Watching`.
+- Stockage de l'onglet surveille :
+  - `autoRefreshTargetTabId`,
+  - `autoRefreshTargetUrl`,
+  - `autoRefreshTargetTitle`.
+- L'auto-refresh utilise d'abord l'onglet surveille.
+- Si aucun onglet surveille n'existe, l'extension peut utiliser l'onglet X/Twitter actif.
+- Si l'onglet surveille est ferme ou n'est plus X/Twitter, le refresh est ignore proprement.
+- Aucun nouvel onglet n'est ouvert automatiquement.
+- Le scan apres refresh reste limite aux 10 derniers tweets avec scroll lent.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `background.js`
+- `popup.html`
+- `popup.js`
+- `popup.css`
+- `storage.js`
+
+## Sprint 14 - Dynamic Journal basique
+
+Objectif : commencer le Sprint 9 du fichier partage avec une sauvegarde journal locale simple.
+
+Livrables :
+
+- Nouveau stockage local `tnf_journal`.
+- Fonctions :
+  - `getJournal()`,
+  - `setJournal()`,
+  - `saveJournalEntry()`,
+  - `clearJournal()`.
+- Bouton `Save to Journal` sur chaque carte tweet du popup.
+- Bouton `Save to Journal` dans les cartes principales de la sidebar.
+- Entree journal creee en mode prudent :
+  - `tradeIdea: watch_only`,
+  - `setup: news_reaction`,
+  - `result: pending`,
+  - snapshot du contexte marche.
+- Onglet `Journal` dans la sidebar connecte aux entrees sauvegardees.
+- Export `Journal JSON`.
+- Export `Journal CSV`.
+
+Statut : fait pour la base.
+
+Limites :
+
+- Pas encore de formulaire complet.
+- Pas encore edit/delete par entree.
+- Pas encore filtres par instrument, resultat, emotion ou date.
+
+Fichiers principaux :
+
+- `storage.js`
+- `popup.html`
+- `popup.js`
+- `content.js`
+
 ## Sprint 7 - Historique local et deduplication
 
 Objectif : conserver localement les news pertinentes sans doublons.

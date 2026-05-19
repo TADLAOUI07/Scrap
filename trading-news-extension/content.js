@@ -26,9 +26,8 @@
     }
 
     if (message.type === "TNF_SHOW_SIDEBAR") {
-      showSidebar(message.tweets || [], message.rawCount || 0, message.sessionBrief || null);
-      sendResponse({ ok: true });
-      return false;
+      showSidebar(message.tweets || [], message.rawCount || 0, message.sessionBrief || null).then(sendResponse);
+      return true;
     }
 
     return false;
@@ -190,12 +189,13 @@
     return link ? TNFUtils.normalizeText(link.textContent) : "Unknown";
   }
 
-  function showSidebar(tweets, rawCount, sessionBrief) {
+  async function showSidebar(tweets, rawCount, sessionBrief) {
     const existing = document.getElementById(SIDEBAR_ID);
     if (existing) existing.remove();
 
     const sortedTweets = [...tweets].sort((a, b) => (b.contextScoreValue || b.impactScore) - (a.contextScoreValue || a.impactScore));
-    const dashboard = buildSidebarDashboard(sortedTweets, rawCount, sessionBrief);
+    const journal = await TNFStorage.getJournal();
+    const dashboard = buildSidebarDashboard(sortedTweets, rawCount, sessionBrief, journal);
     const sidebar = document.createElement("aside");
     sidebar.id = SIDEBAR_ID;
     sidebar.innerHTML = `
@@ -398,6 +398,23 @@
         font-size: 12px;
         text-decoration: none;
       }
+      #${SIDEBAR_ID} .tnf-card-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      #${SIDEBAR_ID} .tnf-action {
+        min-height: 28px;
+        padding: 0 9px;
+        border: 1px solid #2b3746;
+        border-radius: 8px;
+        background: #1b2531;
+        color: #f4f7fb;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 800;
+      }
     `;
 
     sidebar.querySelector(".tnf-close").addEventListener("click", () => sidebar.remove());
@@ -408,11 +425,21 @@
         sidebar.querySelectorAll(".tnf-panel").forEach((panel) => panel.classList.toggle("active", panel.dataset.panel === tab));
       });
     });
+    sidebar.querySelectorAll("[data-journal-tweet]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const tweet = sortedTweets.find((item) => item.id === button.dataset.journalTweet);
+        if (!tweet) return;
+        await TNFStorage.saveJournalEntry(buildJournalEntry(tweet));
+        button.textContent = "Saved";
+        button.disabled = true;
+      });
+    });
     document.documentElement.appendChild(style);
     document.documentElement.appendChild(sidebar);
+    return { ok: true };
   }
 
-  function buildSidebarDashboard(tweets, rawCount, sessionBrief) {
+  function buildSidebarDashboard(tweets, rawCount, sessionBrief, journal) {
     const today = buildTodayPanel(tweets, rawCount, sessionBrief);
     return {
       tabs: [
@@ -420,7 +447,7 @@
         { id: "macro", label: "Macro Desk", html: buildMacroPanel(tweets) },
         { id: "assets", label: "Assets", html: buildAssetsPanel(tweets) },
         { id: "calendar", label: "Calendar Risk", html: buildCalendarPanel(tweets) },
-        { id: "journal", label: "Journal", html: buildPlaceholderPanel("Journal", "Save to Journal is planned for the next sprint. Tweets remain available in local history for now.") },
+        { id: "journal", label: "Journal", html: buildJournalPanel(journal) },
         { id: "coach", label: "Coach", html: buildPlaceholderPanel("Coach", "Coaching Review will use saved journal entries once the journal sprint is implemented.") },
         { id: "settings", label: "Settings", html: buildPlaceholderPanel("Settings", "Use the extension options page for API key, prompt, watchlist, interval, and keyword settings.") }
       ]
@@ -546,6 +573,26 @@
     }).join("");
   }
 
+  function buildJournalPanel(journal) {
+    const entries = Array.isArray(journal) ? journal.slice(0, 8) : [];
+    if (entries.length === 0) {
+      return '<div class="tnf-empty">No journal entries yet. Use Save to Journal on a tweet card to store watch-only context.</div>';
+    }
+
+    return entries.map((entry) => `
+      <div class="tnf-card">
+        <div class="tnf-section-title">${escapeHtml(entry.instrument || "Unknown instrument")}</div>
+        <div class="tnf-pill-row">
+          <span class="tnf-pill">${escapeHtml(entry.tradeIdea || "watch_only")}</span>
+          <span class="tnf-pill">${escapeHtml(entry.result || "pending")}</span>
+          <span class="tnf-pill">confidence ${escapeHtml(String(entry.confidence || 0))}/5</span>
+        </div>
+        <div class="tnf-text">${escapeHtml(entry.notes || "")}</div>
+        <div class="tnf-meta">${escapeHtml(formatDate(entry.createdAt))} | ${escapeHtml(entry.setup || "news_reaction")} | ${escapeHtml(entry.emotion || "calm")}</div>
+      </div>
+    `).join("");
+  }
+
   function buildPlaceholderPanel(title, message) {
     return `
       <div class="tnf-empty">
@@ -565,9 +612,35 @@
         </div>
         <div class="tnf-text">${escapeHtml(tweet.summary || tweet.text || "")}</div>
         <div class="tnf-meta">${escapeHtml(tweet.direction || "neutral")} | ${escapeHtml((tweet.categories || []).join(" / "))}</div>
-        ${tweet.url ? `<a href="${escapeAttribute(tweet.url)}" target="_blank" rel="noreferrer">Open Tweet</a>` : ""}
+        <div class="tnf-card-actions">
+          ${tweet.url ? `<a href="${escapeAttribute(tweet.url)}" target="_blank" rel="noreferrer">Open Tweet</a>` : ""}
+          <button type="button" class="tnf-action" data-journal-tweet="${escapeAttribute(tweet.id)}">Save to Journal</button>
+        </div>
       </div>
     `;
+  }
+
+  function buildJournalEntry(tweet) {
+    const instrument = (tweet.affectedAssets && tweet.affectedAssets[0]) || "XAUUSD";
+    return {
+      id: TNFUtils.simpleHash(`journal:${tweet.id}:${Date.now()}`),
+      createdAt: new Date().toISOString(),
+      linkedTweetIds: [tweet.id],
+      instrument,
+      tradeIdea: "watch_only",
+      setup: "news_reaction",
+      confidence: 3,
+      emotion: "calm",
+      followedPlan: true,
+      result: "pending",
+      notes: tweet.summary || tweet.text || "",
+      marketContextSnapshot: {
+        riskTone: tweet.contextRiskLevel || "unknown",
+        mainDriver: tweet.macroTheme || "",
+        contextScore: tweet.contextScoreValue || 0,
+        affectedAssets: tweet.affectedAssets || []
+      }
+    };
   }
 
   function groupBy(items, getKey) {
@@ -612,6 +685,15 @@
 
   function escapeAttribute(value) {
     return escapeHtml(value).replace(/'/g, "&#39;");
+  }
+
+  function formatDate(value) {
+    if (!value) return "Unknown date";
+    try {
+      return new Date(value).toLocaleString();
+    } catch (error) {
+      return value;
+    }
   }
 
   function delay(milliseconds) {
