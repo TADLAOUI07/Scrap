@@ -170,12 +170,20 @@ To enable AI analysis:
 
 1. Open the extension options page.
 2. Paste your OpenAI API key into `OpenAI API Key`.
-3. Set the model name, for example `gpt-4.1-mini`.
+3. Set the model name, for example `gpt-5.4-mini`.
 4. Edit `AI analysis prompt` if you want to define your own macro/trading framework.
 5. Click `Save Settings`.
 6. Open the popup on an X/Twitter page.
 7. Click `Scan Latest 10 Tweets`.
 8. Click `Analyze with OpenAI`.
+
+With `Auto-analyze all scanned tweets after scan` enabled, every `Scan Latest 10 Tweets` run will use OpenAI for:
+
+- market-wide analysis,
+- session brief,
+- per-tweet analysis for each scanned tweet.
+
+This can send up to 10 tweet-analysis requests plus the summary/brief requests per scan. It requires a valid OpenAI API key and will consume API usage.
 
 If the local keyword filter finds `0 relevant` items, the AI analysis can still use the latest 10 visible tweets captured during the slow scan. This is useful when a news account posts market-moving headlines that do not match your current keyword list yet.
 

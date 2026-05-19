@@ -560,13 +560,23 @@ Pour desactiver :
 
 1. Ouvrir la page options de l'extension.
 2. Coller une cle OpenAI personnelle dans `OpenAI API Key`.
-3. Choisir le modele, par exemple `gpt-4.1-mini`.
+3. Choisir le modele, par exemple `gpt-5.4-mini`.
 4. Modifier `AI analysis prompt` pour guider la methode d'analyse de ton modele.
 5. Cliquer `Save Settings`.
 6. Ouvrir une page X/Twitter.
 7. Cliquer `Scan Latest 10 Tweets`.
 8. Choisir une paire dans `News for pair / market`.
 9. Cliquer `Analyze with OpenAI`.
+
+Mode AI-first ajoute :
+
+- Modele par defaut `gpt-5.4-mini`.
+- `Auto-analyze all scanned tweets after scan` active par defaut.
+- Apres chaque scan, l'extension lance :
+  - analyse globale marche,
+  - session brief,
+  - analyse IA de chaque tweet scanne.
+- Necessite une cle OpenAI valide et consomme l'API.
 
 Important :
 

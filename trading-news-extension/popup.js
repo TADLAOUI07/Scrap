@@ -18,6 +18,7 @@
     bindElements();
     bindEvents();
     state.settings = await TNFStorage.getSettings();
+    state.settings = await migrateAiFirstSettings(state.settings);
     state.history = await TNFStorage.getHistory();
     state.sessionBrief = await TNFStorage.getSessionBrief();
     const lastScan = await TNFStorage.getLastScan();
@@ -84,6 +85,17 @@
     });
   }
 
+  async function migrateAiFirstSettings(settings) {
+    const next = {};
+    if (settings.aiAutoAnalyze !== true) next.aiAutoAnalyze = true;
+    if (!settings.openAiModel || settings.openAiModel === "gpt-4.1-mini") {
+      next.openAiModel = "gpt-5.4-mini";
+    }
+
+    if (Object.keys(next).length === 0) return settings;
+    return TNFStorage.saveSettings(next);
+  }
+
   async function checkActivePage() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     els.pageStatus.textContent = tab && TNFUtils.isTwitterUrl(tab.url)
@@ -104,7 +116,7 @@
       state.rawTweets = response.rawTweets || [];
       state.history = await TNFStorage.getHistory();
       if (state.settings.aiAutoAnalyze && getAiInputTweets(response).length > 0) {
-        await analyzeWithAi(getAiInputTweets(response));
+        await runFullAiPipeline(response);
       }
       renderStats(response);
       renderTweets();
@@ -202,6 +214,68 @@
     }
   }
 
+  async function runFullAiPipeline(scanResponse) {
+    const tweets = getAiInputTweets(scanResponse).slice(0, 10);
+    if (tweets.length === 0) return;
+
+    if (!state.settings.openAiApiKey) {
+      showMessage("OpenAI API key missing. Add it in Options to analyze all tweets with gpt-5.4-mini.");
+      return;
+    }
+
+    ensureTweetsVisibleForAi(tweets);
+    renderTweets();
+    showMessage(`AI pipeline started with ${state.settings.openAiModel || "gpt-5.4-mini"} for ${tweets.length} tweets.`);
+
+    await analyzeWithAi(tweets);
+    await generateSessionBrief(tweets);
+    await analyzeTweetsWithAi(tweets);
+
+    await persistCurrentScanState();
+    renderTweets();
+    showMessage(`AI analysis complete for ${tweets.length} scanned tweets.`);
+  }
+
+  function ensureTweetsVisibleForAi(tweets) {
+    const byId = new Map(state.tweets.map((tweet) => [tweet.id, tweet]));
+    tweets.forEach((tweet) => {
+      if (!tweet || !tweet.id || byId.has(tweet.id)) return;
+      const visibleTweet = {
+        ...tweet,
+        categories: tweet.categories && tweet.categories.length ? tweet.categories : ["AI Scanned"],
+        detectedKeywords: tweet.detectedKeywords || [],
+        impactScore: Number(tweet.impactScore || 1),
+        importanceLabel: tweet.importanceLabel || "AI Scanned",
+        scoreBadge: tweet.scoreBadge || "AI Scanned",
+        direction: tweet.direction || "neutral",
+        reason: tweet.reason || "Included because OpenAI auto-analysis is enabled.",
+        summary: tweet.summary || tweet.text,
+        createdAt: tweet.createdAt || new Date().toISOString()
+      };
+      byId.set(visibleTweet.id, visibleTweet);
+    });
+    state.tweets = Array.from(byId.values());
+  }
+
+  async function analyzeTweetsWithAi(tweets) {
+    for (const tweet of tweets) {
+      const targetTweet = state.tweets.find((item) => item.id === tweet.id) || tweet;
+      const response = await chrome.runtime.sendMessage({
+        type: "TNF_ANALYZE_TWEET",
+        payload: { tweet: targetTweet }
+      });
+
+      if (response && response.ok) {
+        const storedTweet = state.tweets.find((item) => item.id === tweet.id);
+        if (storedTweet) {
+          storedTweet.aiTweetAnalysis = response.analysis;
+          storedTweet.aiAnalyzedAt = response.analyzedAt;
+        }
+      }
+    }
+    state.history = await TNFStorage.upsertTweets(state.tweets);
+  }
+
   async function clearHistory() {
     await TNFStorage.clearHistory();
     state.history = [];
@@ -265,8 +339,8 @@
     }
   }
 
-  async function generateSessionBrief() {
-    const tweets = getAiInputTweets();
+  async function generateSessionBrief(sourceTweets) {
+    const tweets = Array.isArray(sourceTweets) ? sourceTweets : getAiInputTweets();
     els.briefPanel.hidden = false;
     els.briefPanel.innerHTML = '<div class="ai-loading">Generating session brief...</div>';
     els.sessionBriefButton.disabled = true;
@@ -293,12 +367,24 @@
     const filtered = scanResponse && Array.isArray(scanResponse.tweets)
       ? scanResponse.tweets
       : getFilteredTweets();
-    if (filtered.length > 0) return filtered;
-
     const raw = scanResponse && Array.isArray(scanResponse.rawTweets)
       ? scanResponse.rawTweets
       : state.rawTweets;
-    return Array.isArray(raw) ? raw : [];
+    const byId = new Map();
+
+    if (Array.isArray(raw)) {
+      raw.forEach((tweet) => {
+        if (tweet && tweet.id) byId.set(tweet.id, tweet);
+      });
+    }
+
+    if (Array.isArray(filtered)) {
+      filtered.forEach((tweet) => {
+        if (tweet && tweet.id) byId.set(tweet.id, { ...(byId.get(tweet.id) || {}), ...tweet });
+      });
+    }
+
+    return Array.from(byId.values());
   }
 
   function renderSettings() {

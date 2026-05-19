@@ -103,7 +103,7 @@
         Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: model || "gpt-4.1-mini",
+        model: model || "gpt-5.4-mini",
         input: buildMarketPrompt(tweets, pair, userPrompt),
         text: {
           format: {
@@ -194,7 +194,7 @@
         Authorization: `Bearer ${settings.openAiApiKey}`
       },
       body: JSON.stringify({
-        model: settings.openAiModel || "gpt-4.1-mini",
+        model: settings.openAiModel || "gpt-5.4-mini",
         input: buildTweetPrompt(tweet, settings),
         text: {
           format: {
@@ -260,7 +260,7 @@
         Authorization: `Bearer ${settings.openAiApiKey}`
       },
       body: JSON.stringify({
-        model: settings.openAiModel || "gpt-4.1-mini",
+        model: settings.openAiModel || "gpt-5.4-mini",
         input: buildSessionBriefPrompt(tweets, settings),
         text: {
           format: {

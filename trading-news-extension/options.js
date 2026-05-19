@@ -11,7 +11,19 @@
     bindElements();
     bindEvents();
     settings = await TNFStorage.getSettings();
+    settings = await migrateAiFirstSettings(settings);
     render();
+  }
+
+  async function migrateAiFirstSettings(currentSettings) {
+    const next = {};
+    if (currentSettings.aiAutoAnalyze !== true) next.aiAutoAnalyze = true;
+    if (!currentSettings.openAiModel || currentSettings.openAiModel === "gpt-4.1-mini") {
+      next.openAiModel = "gpt-5.4-mini";
+    }
+
+    if (Object.keys(next).length === 0) return currentSettings;
+    return TNFStorage.saveSettings(next);
   }
 
   function bindElements() {
@@ -63,7 +75,7 @@
     els.watchedPairs.value = (settings.watchedPairs || []).join(", ");
     els.theme.value = settings.theme;
     els.openAiApiKey.value = settings.openAiApiKey || "";
-    els.openAiModel.value = settings.openAiModel || "gpt-4.1-mini";
+    els.openAiModel.value = settings.openAiModel || "gpt-5.4-mini";
     els.aiAutoAnalyze.checked = Boolean(settings.aiAutoAnalyze);
     els.aiAnalysisPrompt.value = settings.aiAnalysisPrompt || TNFStorage.DEFAULT_AI_ANALYSIS_PROMPT;
     els.aiBackendUrl.value = settings.aiBackendUrl || "";
@@ -143,7 +155,7 @@
         .filter(Boolean),
       theme: els.theme.value,
       openAiApiKey: els.openAiApiKey.value.trim(),
-      openAiModel: els.openAiModel.value.trim() || "gpt-4.1-mini",
+      openAiModel: els.openAiModel.value.trim() || "gpt-5.4-mini",
       aiAutoAnalyze: els.aiAutoAnalyze.checked,
       aiAnalysisPrompt: els.aiAnalysisPrompt.value.trim() || TNFStorage.DEFAULT_AI_ANALYSIS_PROMPT,
       aiBackendUrl: els.aiBackendUrl.value.trim(),
