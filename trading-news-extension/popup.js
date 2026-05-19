@@ -6,7 +6,6 @@
     rawTweets: [],
     history: [],
     journal: [],
-    journalDraftTweet: null,
     filter: "all",
     settings: null,
     sessionBrief: null
@@ -57,24 +56,8 @@
       "nextRefresh",
       "tweetList",
       "message",
-      "journalFormPanel",
-      "journalFormContext",
-      "journalInstrument",
-      "journalTradeIdea",
-      "journalSetup",
-      "journalConfidence",
-      "journalEmotion",
-      "journalResult",
-      "journalFollowedPlan",
-      "journalNotes",
-      "saveJournalEntry",
-      "cancelJournalEntry",
-      "exportJson",
       "exportCsv",
-      "exportRawJson",
       "exportRawCsv",
-      "exportJournalJson",
-      "exportJournalCsv",
       "clearHistory"
     ].forEach((id) => {
       els[id] = document.getElementById(id);
@@ -93,15 +76,9 @@
     els.aiAnalyzeButton.addEventListener("click", analyzeWithAi);
     els.sessionBriefButton.addEventListener("click", generateSessionBrief);
     els.disableAutoRefresh.addEventListener("click", () => setAutoRefresh(false));
-    els.exportJson.addEventListener("click", exportJson);
     els.exportCsv.addEventListener("click", exportCsv);
-    els.exportRawJson.addEventListener("click", exportRawJson);
     els.exportRawCsv.addEventListener("click", exportRawCsv);
-    els.exportJournalJson.addEventListener("click", exportJournalJson);
-    els.exportJournalCsv.addEventListener("click", exportJournalCsv);
-    els.saveJournalEntry.addEventListener("click", saveJournalForm);
-    els.cancelJournalEntry.addEventListener("click", closeJournalForm);
-    els.clearHistory.addEventListener("click", clearHistory);
+    if (els.clearHistory) els.clearHistory.addEventListener("click", clearHistory);
     els.filters.forEach((button) => {
       button.addEventListener("click", () => {
         state.filter = button.dataset.filter;
@@ -242,79 +219,6 @@
     showMessage(result.saved ? "Tweet saved." : "Tweet already exists in history.");
   }
 
-  async function saveTweetToJournal(tweetId) {
-    const tweet = state.tweets.find((item) => item.id === tweetId);
-    if (!tweet) return;
-
-    openJournalForm(tweet);
-  }
-
-  function openJournalForm(tweet) {
-    state.journalDraftTweet = tweet;
-    const draft = buildJournalEntry(tweet);
-    els.journalFormPanel.hidden = false;
-    els.journalFormContext.textContent = `${draft.instrument} | Context ${draft.marketContextSnapshot.contextScore}/100`;
-    els.journalInstrument.value = draft.instrument;
-    els.journalTradeIdea.value = draft.tradeIdea;
-    els.journalSetup.value = draft.setup;
-    els.journalConfidence.value = draft.confidence;
-    els.journalEmotion.value = draft.emotion;
-    els.journalResult.value = draft.result;
-    els.journalFollowedPlan.checked = Boolean(draft.followedPlan);
-    els.journalNotes.value = draft.notes;
-    els.journalFormPanel.scrollIntoView({ block: "nearest" });
-  }
-
-  function closeJournalForm() {
-    state.journalDraftTweet = null;
-    els.journalFormPanel.hidden = true;
-  }
-
-  async function saveJournalForm() {
-    if (!state.journalDraftTweet) {
-      showMessage("No tweet selected for journal.");
-      return;
-    }
-
-    const entry = buildJournalEntry(state.journalDraftTweet, {
-      instrument: els.journalInstrument.value.trim().toUpperCase(),
-      tradeIdea: els.journalTradeIdea.value,
-      setup: els.journalSetup.value,
-      confidence: TNFUtils.clampNumber(els.journalConfidence.value, 1, 5),
-      emotion: els.journalEmotion.value,
-      followedPlan: els.journalFollowedPlan.checked,
-      result: els.journalResult.value,
-      notes: els.journalNotes.value.trim()
-    });
-
-    state.journal = await TNFStorage.saveJournalEntry(entry);
-    closeJournalForm();
-    showMessage("Journal entry saved.");
-  }
-
-  function buildJournalEntry(tweet, overrides = {}) {
-    const instrument = (tweet.affectedAssets && tweet.affectedAssets[0]) || state.settings.selectedPair || "XAUUSD";
-    return {
-      id: TNFUtils.simpleHash(`journal:${tweet.id}:${Date.now()}`),
-      createdAt: new Date().toISOString(),
-      linkedTweetIds: [tweet.id],
-      instrument: overrides.instrument || instrument,
-      tradeIdea: overrides.tradeIdea || "watch_only",
-      setup: overrides.setup || "news_reaction",
-      confidence: overrides.confidence || 3,
-      emotion: overrides.emotion || "calm",
-      followedPlan: overrides.followedPlan !== undefined ? overrides.followedPlan : true,
-      result: overrides.result || "pending",
-      notes: overrides.notes || tweet.summary || tweet.text || "",
-      marketContextSnapshot: {
-        riskTone: tweet.contextRiskLevel || "unknown",
-        mainDriver: tweet.macroTheme || "",
-        contextScore: tweet.contextScoreValue || 0,
-        affectedAssets: tweet.affectedAssets || []
-      }
-    };
-  }
-
   async function askAiForTweet(tweetId) {
     const tweet = state.tweets.find((item) => item.id === tweetId);
     if (!tweet) return;
@@ -439,53 +343,12 @@
     showMessage("History cleared.");
   }
 
-  function exportJson() {
-    const payload = JSON.stringify(getFilteredTweets(), null, 2);
-    TNFUtils.downloadText(`trading-news-filtered-${Date.now()}.json`, payload, "application/json");
-  }
-
   function exportCsv() {
     TNFUtils.downloadText(`trading-news-filtered-${Date.now()}.csv`, TNFUtils.toCsv(getFilteredTweets()), "text/csv");
   }
 
-  function exportRawJson() {
-    const payload = JSON.stringify(state.rawTweets || [], null, 2);
-    TNFUtils.downloadText(`trading-news-scan-${Date.now()}.json`, payload, "application/json");
-  }
-
   function exportRawCsv() {
     TNFUtils.downloadText(`trading-news-scan-${Date.now()}.csv`, TNFUtils.toCsv(state.rawTweets || []), "text/csv");
-  }
-
-  async function exportJournalJson() {
-    state.journal = await TNFStorage.getJournal();
-    const payload = JSON.stringify(state.journal, null, 2);
-    TNFUtils.downloadText(`trading-news-journal-${Date.now()}.json`, payload, "application/json");
-  }
-
-  async function exportJournalCsv() {
-    state.journal = await TNFStorage.getJournal();
-    TNFUtils.downloadText(`trading-news-journal-${Date.now()}.csv`, TNFUtils.toCsv(flattenJournalEntries(state.journal)), "text/csv");
-  }
-
-  function flattenJournalEntries(entries) {
-    return (entries || []).map((entry) => ({
-      id: entry.id,
-      createdAt: entry.createdAt,
-      linkedTweetIds: (entry.linkedTweetIds || []).join(" | "),
-      instrument: entry.instrument,
-      tradeIdea: entry.tradeIdea,
-      setup: entry.setup,
-      confidence: entry.confidence,
-      emotion: entry.emotion,
-      followedPlan: entry.followedPlan,
-      result: entry.result,
-      notes: entry.notes,
-      riskTone: entry.marketContextSnapshot && entry.marketContextSnapshot.riskTone,
-      mainDriver: entry.marketContextSnapshot && entry.marketContextSnapshot.mainDriver,
-      contextScore: entry.marketContextSnapshot && entry.marketContextSnapshot.contextScore,
-      affectedAssets: entry.marketContextSnapshot && (entry.marketContextSnapshot.affectedAssets || []).join(" | ")
-    }));
   }
 
   async function persistCurrentScanState() {
@@ -714,7 +577,6 @@
         <div class="tweet-buttons">
           ${tweet.url ? `<a href="${escapeAttribute(tweet.url)}" target="_blank" rel="noreferrer">Open Tweet</a>` : ""}
           <button type="button" data-save="${escapeAttribute(tweet.id)}">Save</button>
-          <button type="button" data-journal="${escapeAttribute(tweet.id)}">Save to Journal</button>
           <button type="button" data-ask-ai="${escapeAttribute(tweet.id)}">Ask AI</button>
         </div>
         <div class="tweet-ai" data-ai-result="${escapeAttribute(tweet.id)}">${renderTweetAiAnalysis(tweet)}</div>
@@ -722,8 +584,6 @@
       card.querySelector(".tweet-text").textContent = tweet.text;
       const saveButton = card.querySelector("[data-save]");
       if (saveButton) saveButton.addEventListener("click", () => saveTweet(tweet.id));
-      const journalButton = card.querySelector("[data-journal]");
-      if (journalButton) journalButton.addEventListener("click", () => saveTweetToJournal(tweet.id));
       const askAiButton = card.querySelector("[data-ask-ai]");
       if (askAiButton) askAiButton.addEventListener("click", () => askAiForTweet(tweet.id));
       els.tweetList.appendChild(card);

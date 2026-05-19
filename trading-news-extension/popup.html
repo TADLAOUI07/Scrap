@@ -92,89 +92,11 @@
       </section>
 
       <section class="actions">
-        <button id="exportJson" class="secondary">Export Filtered JSON</button>
         <button id="exportCsv" class="secondary">Export Filtered CSV</button>
-        <button id="exportRawJson" class="secondary">Export Scan JSON</button>
         <button id="exportRawCsv" class="secondary">Export Scan CSV</button>
-        <button id="exportJournalJson" class="secondary">Export Journal JSON</button>
-        <button id="exportJournalCsv" class="secondary">Export Journal CSV</button>
-        <button id="clearHistory" class="danger">Clear History</button>
       </section>
 
       <div id="message" class="message" hidden></div>
-      <section id="journalFormPanel" class="journal-form-panel" hidden>
-        <div class="section-head">
-          <strong>Journal Entry</strong>
-          <small id="journalFormContext">Watch-only decision log</small>
-        </div>
-        <div class="journal-grid">
-          <label class="field">
-            Instrument
-            <input id="journalInstrument" type="text" placeholder="XAUUSD">
-          </label>
-          <label class="field">
-            Trade idea
-            <select id="journalTradeIdea">
-              <option value="watch_only">Watch only</option>
-              <option value="no_trade">No trade</option>
-              <option value="long">Long idea</option>
-              <option value="short">Short idea</option>
-            </select>
-          </label>
-          <label class="field">
-            Setup
-            <select id="journalSetup">
-              <option value="news_reaction">News reaction</option>
-              <option value="breakout">Breakout</option>
-              <option value="retest">Retest</option>
-              <option value="range">Range</option>
-              <option value="reversal">Reversal</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label class="field">
-            Confidence 1-5
-            <input id="journalConfidence" type="number" min="1" max="5" step="1">
-          </label>
-          <label class="field">
-            Emotion
-            <select id="journalEmotion">
-              <option value="calm">Calm</option>
-              <option value="fomo">FOMO</option>
-              <option value="angry">Angry</option>
-              <option value="fearful">Fearful</option>
-              <option value="confident">Confident</option>
-              <option value="tired">Tired</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label class="field">
-            Result
-            <select id="journalResult">
-              <option value="pending">Pending</option>
-              <option value="skipped">Skipped</option>
-              <option value="win">Win</option>
-              <option value="loss">Loss</option>
-              <option value="breakeven">Breakeven</option>
-            </select>
-          </label>
-        </div>
-        <label class="toggle-row compact-toggle">
-          <span>
-            <strong>Followed plan</strong>
-            <small>Keep this ON when the decision followed your rules.</small>
-          </span>
-          <input id="journalFollowedPlan" type="checkbox" role="switch">
-        </label>
-        <label class="field">
-          Notes
-          <textarea id="journalNotes" class="journal-notes" placeholder="Why this news matters, what you watched, and what you avoided."></textarea>
-        </label>
-        <div class="journal-actions">
-          <button id="saveJournalEntry" class="primary" type="button">Save Journal Entry</button>
-          <button id="cancelJournalEntry" class="secondary" type="button">Cancel</button>
-        </div>
-      </section>
       <section id="tweetList" class="tweet-list" aria-live="polite"></section>
     </main>
 
