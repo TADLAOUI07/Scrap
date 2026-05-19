@@ -572,10 +572,12 @@ Mode AI-first ajoute :
 
 - Modele par defaut `gpt-5.4-mini`.
 - `Auto-analyze all scanned tweets after scan` active par defaut.
+- Filtre de mots-cles IA configurable dans Options.
+- L'IA ne s'execute que si le tweet contient au moins un mot-cle IA.
 - Apres chaque scan, l'extension lance :
   - analyse globale marche,
   - session brief,
-  - analyse IA de chaque tweet scanne.
+  - analyse IA de chaque tweet scanne qui match les mots-cles IA.
 - Necessite une cle OpenAI valide et consomme l'API.
 
 Important :

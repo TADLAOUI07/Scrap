@@ -540,6 +540,31 @@
     });
   }
 
+  function getAiKeywords(settings) {
+    const keywords = Array.isArray(settings.aiKeywords) && settings.aiKeywords.length
+      ? settings.aiKeywords
+      : globalThis.TNFStorage.DEFAULT_AI_KEYWORDS;
+    return keywords.map((keyword) => String(keyword || "").trim().toLowerCase()).filter(Boolean);
+  }
+
+  function tweetMatchesAiKeywords(tweet, settings) {
+    if (settings.aiKeywordGateEnabled === false) return true;
+    const keywords = getAiKeywords(settings);
+    if (keywords.length === 0) return true;
+    const haystack = [
+      tweet.text || "",
+      (tweet.categories || []).join(" "),
+      (tweet.detectedKeywords || []).join(" "),
+      (tweet.affectedAssets || []).join(" "),
+      tweet.macroTheme || ""
+    ].join(" ").toLowerCase();
+    return keywords.some((keyword) => haystack.includes(keyword));
+  }
+
+  function filterTweetsForAiKeywords(tweets, settings) {
+    return (Array.isArray(tweets) ? tweets : []).filter((tweet) => tweetMatchesAiKeywords(tweet, settings));
+  }
+
   function getPairKeywords(pair) {
     const normalized = String(pair || "").toUpperCase();
     const base = [normalized.toLowerCase()];
@@ -574,6 +599,8 @@
     fallbackTweetAnalysis,
     fallbackSessionBrief,
     filterTweetsForPair,
+    filterTweetsForAiKeywords,
+    tweetMatchesAiKeywords,
     getPairKeywords
   };
 })();

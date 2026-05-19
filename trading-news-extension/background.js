@@ -254,6 +254,7 @@ async function findActiveTwitterTab() {
 async function analyzeMarketNews(payload) {
   const settings = await TNFStorage.getSettings();
   const tweets = Array.isArray(payload.tweets) ? payload.tweets.slice(0, 20) : [];
+  const aiTweets = TNFAI.filterTweetsForAiKeywords(tweets, settings);
   const pair = payload.pair || settings.selectedPair || "XAUUSD";
 
   if (!settings.openAiApiKey) {
@@ -267,8 +268,12 @@ async function analyzeMarketNews(payload) {
     return { ok: false, error: "No visible news available for AI analysis. Run Scan Market News first." };
   }
 
+  if (aiTweets.length === 0) {
+    return { ok: false, error: "AI skipped: no tweet contains your configured AI keywords." };
+  }
+
   try {
-    const analysis = await TNFAI.analyzeMarketNews({ ...settings, selectedPair: pair }, tweets);
+    const analysis = await TNFAI.analyzeMarketNews({ ...settings, selectedPair: pair }, aiTweets);
     return {
       ok: true,
       analysis,
@@ -290,6 +295,13 @@ async function analyzeSingleTweet(payload) {
     return { ok: false, error: "No tweet selected for AI analysis." };
   }
 
+  if (!TNFAI.tweetMatchesAiKeywords(tweet, settings)) {
+    return {
+      ok: false,
+      error: "AI skipped: this tweet does not contain any configured AI keyword."
+    };
+  }
+
   const analysis = await TNFAI.analyzeTweet(settings, tweet);
   return {
     ok: true,
@@ -301,13 +313,18 @@ async function analyzeSingleTweet(payload) {
 async function generateSessionBrief(payload) {
   const settings = await TNFStorage.getSettings();
   const tweets = Array.isArray(payload.tweets) ? payload.tweets.slice(0, 20) : [];
+  const aiTweets = TNFAI.filterTweetsForAiKeywords(tweets, settings);
 
   if (tweets.length === 0) {
     return { ok: false, error: "No tweets available for session brief. Run Scan Latest 10 Tweets first." };
   }
 
+  if (aiTweets.length === 0) {
+    return { ok: false, error: "Session brief skipped: no tweet contains your configured AI keywords." };
+  }
+
   try {
-    const brief = await TNFAI.generateSessionBrief(settings, tweets);
+    const brief = await TNFAI.generateSessionBrief(settings, aiTweets);
     await TNFStorage.setSessionBrief(brief);
     return { ok: true, brief };
   } catch (error) {

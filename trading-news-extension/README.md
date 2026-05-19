@@ -183,7 +183,9 @@ With `Auto-analyze all scanned tweets after scan` enabled, every `Scan Latest 10
 - session brief,
 - per-tweet analysis for each scanned tweet.
 
-This can send up to 10 tweet-analysis requests plus the summary/brief requests per scan. It requires a valid OpenAI API key and will consume API usage.
+To reduce token consumption, OpenAI is called only for tweets that contain at least one configured AI keyword. You can edit this list in Options under `AI keyword filter`.
+
+This can send up to 10 tweet-analysis requests plus the summary/brief requests per scan, but only for keyword-matched tweets. It requires a valid OpenAI API key and will consume API usage.
 
 If the local keyword filter finds `0 relevant` items, the AI analysis can still use the latest 10 visible tweets captured during the slow scan. This is useful when a news account posts market-moving headlines that do not match your current keyword list yet.
 

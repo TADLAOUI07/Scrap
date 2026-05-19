@@ -88,6 +88,10 @@
   async function migrateAiFirstSettings(settings) {
     const next = {};
     if (settings.aiAutoAnalyze !== true) next.aiAutoAnalyze = true;
+    if (settings.aiKeywordGateEnabled !== true) next.aiKeywordGateEnabled = true;
+    if (!Array.isArray(settings.aiKeywords) || settings.aiKeywords.length === 0) {
+      next.aiKeywords = TNFStorage.DEFAULT_AI_KEYWORDS;
+    }
     if (!settings.openAiModel || settings.openAiModel === "gpt-4.1-mini") {
       next.openAiModel = "gpt-5.4-mini";
     }
@@ -223,17 +227,44 @@
       return;
     }
 
-    ensureTweetsVisibleForAi(tweets);
-    renderTweets();
-    showMessage(`AI pipeline started with ${state.settings.openAiModel || "gpt-5.4-mini"} for ${tweets.length} tweets.`);
+    const aiTweets = filterTweetsForAi(tweets);
+    if (aiTweets.length === 0) {
+      ensureTweetsVisibleForAi(tweets);
+      renderTweets();
+      showMessage("AI skipped: no scanned tweet contains your AI keyword filter.");
+      return;
+    }
 
-    await analyzeWithAi(tweets);
-    await generateSessionBrief(tweets);
-    await analyzeTweetsWithAi(tweets);
+    ensureTweetsVisibleForAi(aiTweets);
+    renderTweets();
+    showMessage(`AI pipeline started with ${state.settings.openAiModel || "gpt-5.4-mini"} for ${aiTweets.length}/${tweets.length} keyword-matched tweets.`);
+
+    await analyzeWithAi(aiTweets);
+    await generateSessionBrief(aiTweets);
+    await analyzeTweetsWithAi(aiTweets);
 
     await persistCurrentScanState();
     renderTweets();
-    showMessage(`AI analysis complete for ${tweets.length} scanned tweets.`);
+    showMessage(`AI analysis complete for ${aiTweets.length} keyword-matched tweets.`);
+  }
+
+  function filterTweetsForAi(tweets) {
+    return (Array.isArray(tweets) ? tweets : []).filter((tweet) => tweetMatchesAiKeywords(tweet));
+  }
+
+  function tweetMatchesAiKeywords(tweet) {
+    if (state.settings.aiKeywordGateEnabled === false) return true;
+    const keywords = Array.isArray(state.settings.aiKeywords) && state.settings.aiKeywords.length
+      ? state.settings.aiKeywords
+      : TNFStorage.DEFAULT_AI_KEYWORDS;
+    const haystack = [
+      tweet.text || "",
+      (tweet.categories || []).join(" "),
+      (tweet.detectedKeywords || []).join(" "),
+      (tweet.affectedAssets || []).join(" "),
+      tweet.macroTheme || ""
+    ].join(" ").toLowerCase();
+    return keywords.some((keyword) => haystack.includes(String(keyword).toLowerCase()));
   }
 
   function ensureTweetsVisibleForAi(tweets) {

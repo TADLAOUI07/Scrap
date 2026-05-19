@@ -38,6 +38,8 @@
       "openAiApiKey",
       "openAiModel",
       "aiAutoAnalyze",
+      "aiKeywordGateEnabled",
+      "aiKeywords",
       "aiAnalysisPrompt",
       "aiBackendUrl",
       "categoryList",
@@ -77,6 +79,8 @@
     els.openAiApiKey.value = settings.openAiApiKey || "";
     els.openAiModel.value = settings.openAiModel || "gpt-5.4-mini";
     els.aiAutoAnalyze.checked = Boolean(settings.aiAutoAnalyze);
+    els.aiKeywordGateEnabled.checked = settings.aiKeywordGateEnabled !== false;
+    els.aiKeywords.value = (settings.aiKeywords && settings.aiKeywords.length ? settings.aiKeywords : TNFStorage.DEFAULT_AI_KEYWORDS).join(", ");
     els.aiAnalysisPrompt.value = settings.aiAnalysisPrompt || TNFStorage.DEFAULT_AI_ANALYSIS_PROMPT;
     els.aiBackendUrl.value = settings.aiBackendUrl || "";
     renderCategories();
@@ -157,6 +161,8 @@
       openAiApiKey: els.openAiApiKey.value.trim(),
       openAiModel: els.openAiModel.value.trim() || "gpt-5.4-mini",
       aiAutoAnalyze: els.aiAutoAnalyze.checked,
+      aiKeywordGateEnabled: els.aiKeywordGateEnabled.checked,
+      aiKeywords: parseKeywordList(els.aiKeywords.value),
       aiAnalysisPrompt: els.aiAnalysisPrompt.value.trim() || TNFStorage.DEFAULT_AI_ANALYSIS_PROMPT,
       aiBackendUrl: els.aiBackendUrl.value.trim(),
       categories
@@ -166,6 +172,13 @@
   function exportSettings() {
     const payload = JSON.stringify(readSettingsFromForm(), null, 2);
     TNFUtils.downloadText(`trading-news-settings-${Date.now()}.json`, payload, "application/json");
+  }
+
+  function parseKeywordList(value) {
+    return String(value || "")
+      .split(/[\n,]/)
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean);
   }
 
   async function importSettings(event) {

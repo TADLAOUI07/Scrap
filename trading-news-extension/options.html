@@ -72,6 +72,16 @@
           <input id="aiAutoAnalyze" type="checkbox">
         </label>
 
+        <label class="row">
+          <span>Only call AI when tweet contains one AI keyword</span>
+          <input id="aiKeywordGateEnabled" type="checkbox">
+        </label>
+
+        <label>
+          AI keyword filter, comma-separated
+          <textarea id="aiKeywords" class="large-textarea" placeholder="gold, xauusd, fed, cpi, dxy, oil..."></textarea>
+        </label>
+
         <label>
           AI analysis prompt
           <textarea id="aiAnalysisPrompt" class="large-textarea" placeholder="Describe how the AI should scan and analyze the news."></textarea>
