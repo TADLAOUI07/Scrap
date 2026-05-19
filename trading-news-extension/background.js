@@ -1,7 +1,7 @@
 importScripts("utils.js", "scoring.js", "storage.js", "ai.js");
 
 const AUTO_REFRESH_ALARM = "tnf_auto_refresh";
-const MIN_REFRESH_MINUTES = 5;
+const MIN_REFRESH_MINUTES = 1;
 const CONTENT_SCRIPT_FILES = ["utils.js", "scoring.js", "storage.js", "content.js"];
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -25,6 +25,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "TNF_SET_AUTO_REFRESH") {
     handleAutoRefreshToggle(Boolean(message.enabled), message.minutes).then(sendResponse);
+    return true;
+  }
+
+  if (message.type === "TNF_GET_AUTO_REFRESH_STATUS") {
+    getAutoRefreshStatus().then(sendResponse);
     return true;
   }
 
@@ -55,8 +60,12 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     return;
   }
 
-  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!activeTab || !activeTab.id || !TNFUtils.isTwitterUrl(activeTab.url)) {
+  const activeTab = await getRefreshTargetTab(settings);
+  if (!activeTab || !activeTab.id || !TNFUtils.isTwitterUrl(activeTab.url || "")) {
+    await TNFStorage.saveSettings({
+      lastRefreshStatus: "Skipped refresh: no active X/Twitter tab found.",
+      nextRefreshAt: nextRefreshIso(settings.autoRefreshMinutes || MIN_REFRESH_MINUTES)
+    });
     scheduleAutoRefresh(settings.autoRefreshMinutes || MIN_REFRESH_MINUTES);
     return;
   }
@@ -69,6 +78,10 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   });
 
   chrome.tabs.reload(activeTab.id);
+  await TNFStorage.saveSettings({
+    lastRefreshAt: new Date().toISOString(),
+    lastRefreshStatus: `Refreshed ${activeTab.url || "X/Twitter tab"}.`
+  });
   scheduleAutoRefresh(settings.autoRefreshMinutes || MIN_REFRESH_MINUTES);
 });
 
@@ -101,10 +114,17 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 async function handleAutoRefreshToggle(enabled, minutes) {
   const safeMinutes = normalizeRefreshMinutes(minutes);
+  const targetTab = enabled ? await findActiveTwitterTab() : null;
   const settings = await TNFStorage.saveSettings({
     autoRefreshEnabled: enabled,
     autoRefreshMinutes: safeMinutes,
-    nextRefreshAt: enabled ? nextRefreshIso(safeMinutes) : ""
+    autoRefreshTargetTabId: targetTab && targetTab.id ? targetTab.id : null,
+    nextRefreshAt: enabled ? nextRefreshIso(safeMinutes) : "",
+    lastRefreshStatus: enabled
+      ? targetTab && targetTab.id
+        ? `Auto-refresh armed for ${targetTab.url || "current X/Twitter tab"}.`
+        : "Auto-refresh is on, but no X/Twitter tab is active yet."
+      : "Auto-refresh is off."
   });
 
   if (enabled) {
@@ -145,6 +165,11 @@ async function scanActiveTab() {
     return { ok: false, error: "Open x.com or twitter.com before scanning." };
   }
 
+  const settings = await TNFStorage.getSettings();
+  if (settings.autoRefreshEnabled) {
+    await TNFStorage.saveSettings({ autoRefreshTargetTabId: activeTab.id });
+  }
+
   try {
     const response = await chrome.tabs.sendMessage(activeTab.id, { type: "TNF_MANUAL_SCAN" });
     return response || { ok: false, error: "No response from the page." };
@@ -168,7 +193,52 @@ async function scanActiveTab() {
 
 async function handleAutoScanComplete(payload) {
   await TNFStorage.setLastScan(payload);
+  await TNFStorage.saveSettings({
+    lastRefreshStatus: `Auto scan complete. ${payload.scannedCount || 0} tweets checked, ${payload.savedCount || 0} new relevant tweets added.`
+  });
   return { ok: true };
+}
+
+async function getAutoRefreshStatus() {
+  const settings = await TNFStorage.getSettings();
+  const alarm = await chrome.alarms.get(AUTO_REFRESH_ALARM);
+  return {
+    ok: true,
+    enabled: settings.autoRefreshEnabled,
+    minutes: settings.autoRefreshMinutes,
+    nextRefreshAt: alarm && alarm.scheduledTime ? new Date(alarm.scheduledTime).toISOString() : settings.nextRefreshAt,
+    lastRefreshAt: settings.lastRefreshAt,
+    lastRefreshStatus: settings.lastRefreshStatus,
+    targetTabId: settings.autoRefreshTargetTabId
+  };
+}
+
+async function getRefreshTargetTab(settings) {
+  const activeTab = await findActiveTwitterTab();
+  if (activeTab) {
+    await TNFStorage.saveSettings({ autoRefreshTargetTabId: activeTab.id });
+    return activeTab;
+  }
+
+  if (settings.autoRefreshTargetTabId) {
+    try {
+      const target = await chrome.tabs.get(settings.autoRefreshTargetTabId);
+      if (target && TNFUtils.isTwitterUrl(target.url || "")) return target;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+async function findActiveTwitterTab() {
+  const activeTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  const activeTwitter = activeTabs.find((tab) => tab && tab.id && TNFUtils.isTwitterUrl(tab.url || ""));
+  if (activeTwitter) return activeTwitter;
+
+  const twitterTabs = await chrome.tabs.query({ url: ["https://x.com/*", "https://twitter.com/*"] });
+  return twitterTabs.find((tab) => tab && tab.active) || twitterTabs[0] || null;
 }
 
 async function analyzeMarketNews(payload) {

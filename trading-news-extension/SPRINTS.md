@@ -16,7 +16,7 @@ Ce qui est inclus :
 - Content script sur `x.com` et `twitter.com`.
 - Background service worker avec `chrome.alarms`.
 - Scan manuel lent des 10 derniers tweets.
-- Auto-refresh optionnel avec intervalle configurable, minimum 5 minutes, puis scan lent des 10 derniers tweets.
+- Auto-refresh optionnel avec intervalle configurable, minimum 1 minute, puis scan lent des 10 derniers tweets.
 - Analyse OpenAI optionnelle avec cle utilisateur stockee localement.
 - Filtre `News for PAIR` pour Forex, crypto, actions, indices et commodities.
 - Filtrage local par mots-cles trading.
@@ -195,7 +195,7 @@ Livrables :
 - Intervalle configurable par l'utilisateur.
 - Sauvegarde dans `chrome.storage.local`.
 - Utilisation de `chrome.alarms`.
-- Intervalle minimum : 5 minutes.
+- Intervalle minimum : 1 minute.
 - Refresh uniquement de l'onglet actif.
 - Refresh uniquement si l'URL est `x.com` ou `twitter.com`.
 - Aucun nouvel onglet ouvert automatiquement.
@@ -379,7 +379,7 @@ https://x.com/nom_du_compte
 
 1. Ouvrir une page `x.com` ou `twitter.com`.
 2. Ouvrir le popup.
-3. Choisir un intervalle en minutes, minimum 5.
+3. Choisir un intervalle en minutes, minimum 1.
 4. Activer `Auto-refresh visible page`.
 4. Verifier que le statut passe a `Auto-refresh: ON`.
 5. Attendre l'intervalle configure.

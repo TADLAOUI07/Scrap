@@ -45,7 +45,12 @@
     els.importSettings.addEventListener("change", importSettings);
     els.resetSettings.addEventListener("click", resetSettings);
     els.autoRefreshEnabled.addEventListener("change", () => {
-      els.autoRefreshState.textContent = `Auto-refresh: ${els.autoRefreshEnabled.checked ? "ON" : "OFF"}`;
+      const minutes = TNFUtils.clampNumber(els.autoRefreshMinutes.value, 1, 1440);
+      els.autoRefreshState.textContent = `Auto-refresh: ${els.autoRefreshEnabled.checked ? "ON" : "OFF"} | every ${minutes} min`;
+    });
+    els.autoRefreshMinutes.addEventListener("input", () => {
+      const minutes = TNFUtils.clampNumber(els.autoRefreshMinutes.value, 1, 1440);
+      els.autoRefreshState.textContent = `Auto-refresh: ${els.autoRefreshEnabled.checked ? "ON" : "OFF"} | every ${minutes} min`;
     });
   }
 
@@ -108,7 +113,7 @@
     });
 
     render();
-    showMessage("Settings saved.");
+    showMessage(`Settings saved. Auto-refresh interval: ${settings.autoRefreshMinutes} minutes.`);
   }
 
   function readSettingsFromForm() {
@@ -129,7 +134,7 @@
 
     return {
       autoRefreshEnabled: els.autoRefreshEnabled.checked,
-      autoRefreshMinutes: TNFUtils.clampNumber(els.autoRefreshMinutes.value, 5, 1440),
+      autoRefreshMinutes: TNFUtils.clampNumber(els.autoRefreshMinutes.value, 1, 1440),
       minimumScore: TNFUtils.clampNumber(els.minimumScore.value, 0, 5),
       selectedPair: els.selectedPair.value,
       watchedPairs: els.watchedPairs.value

@@ -9,7 +9,7 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 - Manual slow scan from the popup with `Scan Latest 10 Tweets`.
 - The scan returns to the top of the opened X/Twitter page, scrolls slowly, and stops after 10 unique tweets.
 - Optional auto-refresh with a configurable interval, disabled by default.
-- Minimum auto-refresh interval: 5 minutes.
+- Minimum auto-refresh interval: 1 minute.
 - Auto-refresh only runs on the active tab when it is on `x.com` or `twitter.com`.
 - Reads visible tweet `article` elements only.
 - Local keyword categories for XAUUSD, USD, Fed, inflation, jobs data, geopolitics, oil/risk sentiment, and EURUSD/ECB.
@@ -62,7 +62,7 @@ When enabled, the extension:
 4. Slowly scans the latest 10 unique tweets.
 5. Saves only new relevant non-duplicate tweets.
 
-The interval cannot be lower than 5 minutes. This keeps the behavior non-aggressive.
+The interval cannot be lower than 1 minute. The extension still refreshes only the selected X/Twitter tab and scans only the latest 10 tweets with slow scrolling.
 
 To disable it:
 
@@ -117,7 +117,7 @@ Exports are generated locally in the browser from locally stored data.
 - It does not guarantee trading signals.
 - It does not replace human analysis.
 - It reads only visible tweets.
-- Auto-refresh is optional and limited to a minimum interval of 5 minutes.
+- Auto-refresh is optional and limited to a minimum interval of 1 minute.
 - Do not use it to bypass X/Twitter rules or protections.
 - Do not store API secrets in the extension code.
 

@@ -26,7 +26,7 @@
     }
 
     if (message.type === "TNF_SHOW_SIDEBAR") {
-      showSidebar(message.tweets || []);
+      showSidebar(message.tweets || [], message.rawCount || 0);
       sendResponse({ ok: true });
       return false;
     }
@@ -186,7 +186,7 @@
     return link ? TNFUtils.normalizeText(link.textContent) : "Unknown";
   }
 
-  function showSidebar(tweets) {
+  function showSidebar(tweets, rawCount) {
     const existing = document.getElementById(SIDEBAR_ID);
     if (existing) existing.remove();
 
@@ -194,7 +194,10 @@
     sidebar.id = SIDEBAR_ID;
     sidebar.innerHTML = `
       <div class="tnf-sidebar-head">
-        <strong>Market Terminal</strong>
+        <div>
+          <strong>Market Terminal</strong>
+          <small>${escapeHtml(String(tweets.length))} shown / ${escapeHtml(String(rawCount || tweets.length))} scanned</small>
+        </div>
         <button type="button" class="tnf-close" aria-label="Close">x</button>
       </div>
       <div class="tnf-sidebar-list"></div>
@@ -226,6 +229,12 @@
         padding: 12px 14px;
         background: #151a21;
         border-bottom: 1px solid #29313d;
+      }
+      #${SIDEBAR_ID} .tnf-sidebar-head small {
+        display: block;
+        margin-top: 3px;
+        color: #9facbd;
+        font-size: 11px;
       }
       #${SIDEBAR_ID} .tnf-close {
         width: 28px;

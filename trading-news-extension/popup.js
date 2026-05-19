@@ -122,7 +122,7 @@
 
   async function savePopupSettings() {
     state.settings = await TNFStorage.saveSettings({
-      autoRefreshMinutes: TNFUtils.clampNumber(els.refreshMinutes.value, 5, 1440),
+      autoRefreshMinutes: TNFUtils.clampNumber(els.refreshMinutes.value, 1, 1440),
       selectedPair: els.pairSelect.value
     });
 
@@ -148,7 +148,8 @@
     try {
       await chrome.tabs.sendMessage(tab.id, {
         type: "TNF_SHOW_SIDEBAR",
-        tweets: getFilteredTweets()
+        tweets: getFilteredTweets(),
+        rawCount: state.rawTweets.length
       });
       window.close();
     } catch (error) {
