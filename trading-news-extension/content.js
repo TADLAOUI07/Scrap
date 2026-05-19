@@ -70,7 +70,11 @@
   async function processTweets(rawTweets, source, scanMode) {
     const settings = await TNFStorage.getSettings();
     const classified = rawTweets
-      .map((tweet) => TNFScoring.classifyTweet(tweet, settings))
+      .map((tweet) => {
+        const classifiedTweet = TNFScoring.classifyTweet(tweet, settings);
+        if (!classifiedTweet) return null;
+        return TNFCockpit.enrichTweet(classifiedTweet, tweet, settings, rawTweets);
+      })
       .filter(Boolean);
 
     const deduped = TNFStorage.deduplicateTweets(classified);

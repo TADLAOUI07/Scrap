@@ -319,6 +319,7 @@
           <span class="category">${escapeHtml(tweet.categories.join(" / "))}</span>
         </div>
         <div class="tweet-meta">Direction: ${escapeHtml(tweet.direction)} | ${escapeHtml(tweet.author)} ${tweet.time ? "| " + escapeHtml(tweet.time) : ""}</div>
+        ${renderContextScore(tweet)}
         <div class="tweet-reason">Keywords: ${escapeHtml(tweet.detectedKeywords.join(", "))}</div>
         <div class="tweet-reason">Reason: ${escapeHtml(tweet.reason)}</div>
         <p class="tweet-text"></p>
@@ -349,6 +350,31 @@
       indices: "Stocks / Indices"
     };
     return tweets.filter((tweet) => tweet.categories.includes(filterMap[state.filter]));
+  }
+
+  function renderContextScore(tweet) {
+    if (!tweet.contextScore) return "";
+    const reasons = Array.isArray(tweet.contextScore.reasons) ? tweet.contextScore.reasons.slice(0, 3) : [];
+    const penalties = Array.isArray(tweet.contextScore.penalties) ? tweet.contextScore.penalties.slice(0, 2) : [];
+    return `
+      <div class="context-box">
+        <div class="context-line">
+          <span class="${contextBadgeClass(tweet.contextScore.score)}">Context ${tweet.contextScore.score}/100</span>
+          <span class="risk-pill">${escapeHtml(tweet.contextScore.riskLevel)} risk</span>
+          <span class="risk-pill">${escapeHtml(tweet.contextScore.clarity)} clarity</span>
+        </div>
+        ${tweet.affectedAssets && tweet.affectedAssets.length ? `<div class="tweet-reason">Assets: ${escapeHtml(tweet.affectedAssets.join(", "))}</div>` : ""}
+        ${tweet.macroTheme ? `<div class="tweet-reason">Macro theme: ${escapeHtml(tweet.macroTheme)}</div>` : ""}
+        ${reasons.length ? `<div class="tweet-reason">Context reasons: ${escapeHtml(reasons.join(" | "))}</div>` : ""}
+        ${penalties.length ? `<div class="tweet-reason">Penalties: ${escapeHtml(penalties.join(" | "))}</div>` : ""}
+      </div>
+    `;
+  }
+
+  function contextBadgeClass(score) {
+    if (score >= 70) return "context-badge high-context";
+    if (score >= 40) return "context-badge medium-context";
+    return "context-badge low-context";
   }
 
   function badgeClass(score) {

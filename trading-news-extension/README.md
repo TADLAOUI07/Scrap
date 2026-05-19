@@ -18,6 +18,7 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 - Impact scoring from 0 to 5.
 - Local bullish, bearish, or neutral direction hint based on tweet text.
 - Optional OpenAI market analysis with bullish/bearish/mixed/neutral bias and explicit news drivers.
+- Context Edge Score from 0 to 100 for each relevant tweet, with reasons, penalties, clarity, risk level, affected assets, and macro theme.
 - Popup filters: All, High Impact, XAUUSD, USD, Fed, Inflation, Geopolitics.
 - Floating sidebar on X/Twitter via `Show Sidebar`.
 - Local history with deduplication by tweet URL or text hash.
@@ -91,6 +92,28 @@ You can configure:
 - Optional AI Backend URL for future backend routing.
 - Export/import settings JSON.
 - Reset settings.
+
+## Cockpit Sprint Plan
+
+The target product plan is stored in `COCKPIT_SPRINT_PLAN.md`. It is the reference roadmap for evolving this extension into an AI Trading Context Cockpit.
+
+Implemented from that plan so far:
+
+- Sprint 0 audit and preparation: existing MV3 architecture reviewed and preserved.
+- Sprint 1 data model groundwork: captured tweet, local analysis, affected assets, macro theme, and context score objects are now generated locally.
+- Sprint 2 Context Edge Score: relevant tweet cards show a 0-100 score with reasons, penalties, clarity, and risk level.
+
+Not fully implemented yet:
+
+- Sidebar dashboard tabs.
+- Per-tweet Ask AI button.
+- Session Brief.
+- Macro Desk.
+- Instrument Bias.
+- Calendar Risk dashboard.
+- Dynamic Journal.
+- Coaching Review.
+- Daily Report.
 
 ## Export
 

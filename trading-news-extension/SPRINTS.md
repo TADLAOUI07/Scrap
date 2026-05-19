@@ -19,6 +19,8 @@ Ce qui est inclus :
 - Auto-refresh optionnel avec intervalle configurable, minimum 1 minute, puis scan lent des 10 derniers tweets.
 - Analyse OpenAI optionnelle avec cle utilisateur stockee localement.
 - Filtre `News for PAIR` pour Forex, crypto, actions, indices et commodities.
+- Plan cockpit complet ajoute dans `COCKPIT_SPRINT_PLAN.md`.
+- Context Edge Score 0-100 ajoute dans les cartes de tweets.
 - Filtrage local par mots-cles trading.
 - Scoring impact de 0 a 5.
 - Classification categorie, direction bullish/bearish/neutral, resume local.
@@ -238,6 +240,44 @@ Fichiers principaux :
 - `options.js`
 - `storage.js`
 - `scoring.js`
+
+## Sprint Cockpit 0-2 - Base AI Trading Context Cockpit
+
+Objectif : commencer l'adaptation vers le cockpit de contexte trading defini dans `COCKPIT_SPRINT_PLAN.md`.
+
+Livrables :
+
+- Ajout du plan complet comme fichier de reference : `COCKPIT_SPRINT_PLAN.md`.
+- Ajout du module `cockpit.js`.
+- Modele local `CapturedTweet`.
+- Modele local `LocalTweetAnalysis`.
+- Modele local `ContextScore`.
+- Detection des actifs affectes.
+- Detection des termes calendar risk.
+- Inference d'un theme macro.
+- Calcul du Context Edge Score 0-100.
+- Affichage dans les cartes :
+  - score contexte 0-100,
+  - risk level,
+  - clarity,
+  - affected assets,
+  - macro theme,
+  - reasons,
+  - penalties.
+- Export CSV enrichi avec :
+  - `contextScoreValue`,
+  - `contextRiskLevel`,
+  - `contextClarity`,
+  - `affectedAssets`,
+  - `macroTheme`.
+
+Statut : fait pour la base 0-2.
+
+Limites :
+
+- Les types sont implementes comme objets JavaScript locaux, pas encore comme TypeScript strict.
+- Le dashboard sidebar a onglets reste a faire.
+- Les modules Session Brief, Macro Desk, Instrument Bias, Journal, Coach et Daily Report restent a faire.
 
 Fichiers principaux :
 

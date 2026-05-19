@@ -1,8 +1,8 @@
-importScripts("utils.js", "scoring.js", "storage.js", "ai.js");
+importScripts("utils.js", "scoring.js", "cockpit.js", "storage.js", "ai.js");
 
 const AUTO_REFRESH_ALARM = "tnf_auto_refresh";
 const MIN_REFRESH_MINUTES = 1;
-const CONTENT_SCRIPT_FILES = ["utils.js", "scoring.js", "storage.js", "content.js"];
+const CONTENT_SCRIPT_FILES = ["utils.js", "scoring.js", "cockpit.js", "storage.js", "content.js"];
 
 chrome.runtime.onInstalled.addListener(async () => {
   const settings = await TNFStorage.getSettings();

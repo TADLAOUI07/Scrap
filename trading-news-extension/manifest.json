@@ -35,6 +35,7 @@
       "js": [
         "utils.js",
         "scoring.js",
+        "cockpit.js",
         "storage.js",
         "content.js"
       ],
