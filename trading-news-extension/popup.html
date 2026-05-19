@@ -10,10 +10,14 @@
     <main class="popup">
       <header class="header">
         <div>
+          <span class="eyebrow">AI market desk</span>
           <h1>Market Research Terminal</h1>
           <p id="pageStatus">Open X/Twitter to scan the latest 10 tweets slowly.</p>
         </div>
-        <span class="live-dot" aria-hidden="true"></span>
+        <div class="status-cluster" aria-hidden="true">
+          <span class="live-dot"></span>
+          <small>Live</small>
+        </div>
       </header>
 
       <section class="controls">
@@ -22,6 +26,10 @@
       </section>
 
       <section class="refresh-card">
+        <div class="section-head">
+          <strong>Refresh Control</strong>
+          <small>Slow scan, no infinite scroll</small>
+        </div>
         <label class="toggle-row">
           <span>
             <strong>Auto-refresh visible page</strong>
@@ -37,6 +45,10 @@
       </section>
 
       <section class="terminal-card">
+        <div class="section-head">
+          <strong>AI Research</strong>
+          <small>Keyword-gated OpenAI analysis</small>
+        </div>
         <label class="field">
           News for pair / market
           <select id="pairSelect"></select>

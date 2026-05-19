@@ -401,6 +401,31 @@ Fichiers principaux :
 - `options.js`
 - `storage.js`
 
+## Sprint 12 - UI terminal trading renforcee
+
+Objectif : rendre l'extension plus proche d'un terminal de recherche marche pour traders.
+
+Livrables :
+
+- Popup retravaille en interface compacte `Market Research Terminal`.
+- Header avec badge de statut live.
+- Panneaux separes pour refresh, AI research, stats, filtres et tweets.
+- Cartes tweet plus lisibles avec score, contexte, risque, raisons et analyse IA.
+- Toggles visuels pour auto-refresh et options.
+- Page options retravaillee en panneaux de configuration plus clairs.
+- Categories affichees en grille pour modifier les keywords plus vite.
+- Sidebar plus proche d'un cockpit trading avec onglets, stats et cartes compactes.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `popup.html`
+- `popup.css`
+- `options.html`
+- `options.css`
+- `content.js`
+
 ## Sprint 7 - Historique local et deduplication
 
 Objectif : conserver localement les news pertinentes sans doublons.

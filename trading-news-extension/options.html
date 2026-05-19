@@ -8,13 +8,20 @@
   </head>
   <body>
     <main class="settings">
-      <header>
-        <h1>Trading News Filter Settings</h1>
-        <p>Local filtering works without AI. OpenAI analysis is optional and uses your own API key stored in Chrome local storage.</p>
+      <header class="settings-header">
+        <div>
+          <span class="eyebrow">Market Research Terminal</span>
+          <h1>Trading News Filter Settings</h1>
+          <p>Local filtering works without AI. OpenAI analysis is optional and uses your own API key stored in Chrome local storage.</p>
+        </div>
+        <div class="header-badge">Personal MV3 Extension</div>
       </header>
 
       <section class="panel">
-        <h2>General</h2>
+        <div class="panel-head">
+          <h2>General</h2>
+          <span>Refresh, display and watchlist</span>
+        </div>
         <label class="row">
           <span>Auto-refresh visible X/Twitter page</span>
           <input id="autoRefreshEnabled" type="checkbox">
@@ -54,7 +61,10 @@
       </section>
 
       <section class="panel">
-        <h2>OpenAI Analysis</h2>
+        <div class="panel-head">
+          <h2>OpenAI Analysis</h2>
+          <span>Keyword-gated AI usage</span>
+        </div>
         <p class="state-text">For a personal extension, the key is saved in `chrome.storage.local`. Do not commit or hardcode API keys.</p>
 
         <label>
@@ -94,7 +104,10 @@
       </section>
 
       <section class="panel">
-        <h2>Trading Categories</h2>
+        <div class="panel-head">
+          <h2>Trading Categories</h2>
+          <span>Local keyword classifier</span>
+        </div>
         <div id="categoryList" class="category-list"></div>
       </section>
 

@@ -220,14 +220,14 @@
         position: fixed;
         right: 20px;
         top: 80px;
-        width: 390px;
+        width: 410px;
         max-height: 80vh;
         overflow: auto;
         z-index: 2147483647;
-        background: #101318;
+        background: #090c10;
         color: #f4f7fb;
-        border: 1px solid #29313d;
-        border-radius: 12px;
+        border: 1px solid #2b3746;
+        border-radius: 8px;
         box-shadow: 0 20px 70px rgba(0,0,0,.45);
         font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
@@ -237,28 +237,33 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 12px 14px;
-        background: #151a21;
-        border-bottom: 1px solid #29313d;
+        padding: 13px 14px;
+        background: #10161e;
+        border-bottom: 1px solid #2b3746;
+      }
+      #${SIDEBAR_ID} .tnf-sidebar-head strong {
+        display: block;
+        font-size: 14px;
+        line-height: 1.2;
       }
       #${SIDEBAR_ID} .tnf-tabs {
         position: sticky;
-        top: 57px;
+        top: 58px;
         z-index: 2;
         display: flex;
         gap: 6px;
         overflow-x: auto;
         padding: 9px 10px;
-        background: #101318;
-        border-bottom: 1px solid #29313d;
+        background: #090c10;
+        border-bottom: 1px solid #2b3746;
       }
       #${SIDEBAR_ID} .tnf-tab {
         flex: 0 0 auto;
         min-height: 28px;
         padding: 0 9px;
-        border: 1px solid #2d3745;
+        border: 1px solid #2b3746;
         border-radius: 8px;
-        background: #171d25;
+        background: #151d27;
         color: #aeb9c8;
         cursor: pointer;
         font-size: 12px;
@@ -285,18 +290,18 @@
       #${SIDEBAR_ID} .tnf-close {
         width: 28px;
         height: 28px;
-        border: 0;
+        border: 1px solid #2b3746;
         border-radius: 8px;
-        background: #252d38;
+        background: #1b2531;
         color: #fff;
         cursor: pointer;
       }
       #${SIDEBAR_ID} .tnf-card {
         margin: 0 0 10px;
         padding: 12px;
-        background: #171d25;
-        border: 1px solid #2d3745;
-        border-radius: 10px;
+        background: #10161e;
+        border: 1px solid #2b3746;
+        border-radius: 8px;
       }
       #${SIDEBAR_ID} .tnf-grid {
         display: grid;
@@ -306,9 +311,9 @@
       }
       #${SIDEBAR_ID} .tnf-stat {
         padding: 10px;
-        background: #171d25;
-        border: 1px solid #2d3745;
-        border-radius: 10px;
+        background: #10161e;
+        border: 1px solid #2b3746;
+        border-radius: 8px;
       }
       #${SIDEBAR_ID} .tnf-stat span {
         display: block;
@@ -384,7 +389,7 @@
         color: #9facbd;
         background: #171d25;
         border: 1px dashed #344154;
-        border-radius: 10px;
+        border-radius: 8px;
         font-size: 13px;
         line-height: 1.45;
       }
