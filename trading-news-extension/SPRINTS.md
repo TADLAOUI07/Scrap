@@ -324,13 +324,18 @@ Livrables :
 
 - Sidebar renomme en `AI Trading Context Cockpit`.
 - Navigation par onglets :
-  - Today,
-  - Macro Desk,
   - Assets,
-  - Calendar Risk,
-  - Journal,
-  - Coach,
-  - Settings.
+  - Today,
+  - Macro Desk.
+- Onglet Assets en premier :
+  - fiches locales par actif detecte,
+  - carte verte pour biais bullish,
+  - carte rouge pour biais bearish,
+  - carte jaune pour mixed/neutral,
+  - context score moyen,
+  - risk level,
+  - drivers dominants,
+  - tweet le plus fort.
 - Onglet Today :
   - nombre de tweets scannes,
   - average context score,
@@ -342,24 +347,11 @@ Livrables :
   - groupement local par theme macro,
   - score contexte moyen,
   - assets associes.
-- Onglet Assets :
-  - fiche locale par actif detecte,
-  - biais news local,
-  - context score moyen,
-  - nombre de tweets.
-- Onglet Calendar Risk :
-  - detection locale des termes calendar risk,
-  - mentions count,
-  - assets,
-  - warning prudent.
-- Onglets Journal, Coach, Settings :
-  - etats vides propres prets pour les prochains sprints.
 
-Statut : fait pour la base locale.
+Statut : fait pour la base locale focalisee trading.
 
 Limites :
 
-- Les onglets Journal et Coach ne sont pas encore connectes a un vrai journal.
 - Macro Desk et Assets sont locaux, sans narrative IA dediee pour l'instant.
 - Le Session Brief IA complet reste au sprint suivant.
 

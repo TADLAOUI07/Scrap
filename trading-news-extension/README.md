@@ -20,10 +20,9 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 - Optional OpenAI market analysis with bullish/bearish/mixed/neutral bias and explicit news drivers.
 - Context Edge Score from 0 to 100 for each relevant tweet, with reasons, penalties, clarity, risk level, affected assets, and macro theme.
 - Popup filters: All, High Impact, XAUUSD, USD, Fed, Inflation, Geopolitics.
-- Floating sidebar on X/Twitter via `Show Sidebar`.
+- Floating sidebar on X/Twitter via `Show Sidebar`, focused on Assets, Today, and Macro Desk.
 - Local history with deduplication by tweet URL or text hash.
-- Local Dynamic Journal with `Save to Journal` for watch-only market context.
-- JSON and CSV export.
+- CSV export for filtered news and raw scan results.
 - Options page for keywords, categories, minimum score, theme, auto-refresh, import/export settings, and future AI Backend URL.
 
 ## Install Locally in Chrome
@@ -43,8 +42,7 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 4. Review the filtered tweets in the popup.
 5. Use filters to focus on high impact, XAUUSD, USD, Fed, Inflation, or Geopolitics.
 6. Click `Open Tweet` when a tweet URL is available.
-7. Click `Save to Journal` to save a tweet as watch-only context.
-8. Click `Show Sidebar` to display relevant trading news directly on the X/Twitter page.
+7. Click `Show Sidebar` to display relevant trading context directly on the X/Twitter page.
 
 ## Auto-Refresh
 
@@ -97,21 +95,6 @@ You can configure:
 - Export/import settings JSON.
 - Reset settings.
 
-## Dynamic Journal
-
-The journal is local-first and stored in `chrome.storage.local`.
-
-Current MVP behavior:
-
-- `Save to Journal` opens a journal form from a tweet.
-- The entry stores the linked tweet id, instrument, context score, risk tone, macro driver, affected assets, and notes.
-- The form supports trade idea, setup, confidence, emotion, followed plan, result, and notes.
-- The sidebar `Journal` tab displays recent journal entries.
-- The sidebar `Journal` tab includes simple instrument/result filters and delete actions.
-- The popup can export journal data as JSON or CSV.
-
-The journal does not give buy/sell signals. Full entry editing is planned for the next journal sprint.
-
 ## Cockpit Sprint Plan
 
 The target product plan is stored in `COCKPIT_SPRINT_PLAN.md`. It is the reference roadmap for evolving this extension into an AI Trading Context Cockpit.
@@ -122,13 +105,13 @@ Implemented from that plan so far:
 - Sprint 1 data model groundwork: captured tweet, local analysis, affected assets, macro theme, and context score objects are now generated locally.
 - Sprint 2 Context Edge Score: relevant tweet cards show a 0-100 score with reasons, penalties, clarity, and risk level.
 - Sprint 3 AI Tweet Analysis: each tweet card has `Ask AI`, returning structured context, bias, risk tone, affected assets, why it matters, warning, and a local fallback if OpenAI fails.
-- Sprint 4 Sidebar Dashboard: the injected sidebar is now a tabbed cockpit with Today, Macro Desk, Assets, Calendar Risk, Journal, Coach, and Settings.
+- Sprint 4 Sidebar Dashboard: the injected sidebar is now a focused cockpit with Assets first, then Today, then Macro Desk.
 - Sprint 5 Session Brief: popup can generate and store a session brief from recent tweets; OpenAI is used when available, otherwise a local fallback is shown.
 
 Not fully implemented yet:
 
-- Macro Desk.
-- Instrument Bias.
+- AI-enhanced Macro Desk.
+- AI-enhanced Instrument Bias.
 - Calendar Risk dashboard.
 - Dynamic Journal.
 - Coaching Review.
@@ -136,14 +119,9 @@ Not fully implemented yet:
 
 ## Export
 
-The popup can export filtered news as:
+The popup can export:
 
-- JSON
-- CSV
-
-It can also export the raw latest scan as:
-
-- Scan JSON
+- Filtered CSV
 - Scan CSV
 
 Filtered exports contain only tweets that matched your local trading filters. Scan exports contain the raw tweets captured during the latest slow scan, even if they did not match keywords.

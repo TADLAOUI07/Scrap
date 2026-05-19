@@ -194,9 +194,9 @@
     if (existing) existing.remove();
 
     const sortedTweets = [...tweets].sort((a, b) => (b.contextScoreValue || b.impactScore) - (a.contextScoreValue || a.impactScore));
-    const journal = await TNFStorage.getJournal();
-    const dashboard = buildSidebarDashboard(sortedTweets, rawCount, sessionBrief, journal);
+    const dashboard = buildSidebarDashboard(sortedTweets, rawCount, sessionBrief);
     const sidebar = document.createElement("aside");
+    const activeTabId = dashboard.tabs[0] ? dashboard.tabs[0].id : "assets";
     sidebar.id = SIDEBAR_ID;
     sidebar.innerHTML = `
       <div class="tnf-sidebar-head">
@@ -207,10 +207,10 @@
         <button type="button" class="tnf-close" aria-label="Close">x</button>
       </div>
       <nav class="tnf-tabs" aria-label="Cockpit tabs">
-        ${dashboard.tabs.map((tab) => `<button type="button" class="tnf-tab ${tab.id === "today" ? "active" : ""}" data-tab="${tab.id}">${tab.label}</button>`).join("")}
+        ${dashboard.tabs.map((tab) => `<button type="button" class="tnf-tab ${tab.id === activeTabId ? "active" : ""}" data-tab="${tab.id}">${tab.label}</button>`).join("")}
       </nav>
       <div class="tnf-panels">
-        ${dashboard.tabs.map((tab) => `<section class="tnf-panel ${tab.id === "today" ? "active" : ""}" data-panel="${tab.id}">${tab.html}</section>`).join("")}
+        ${dashboard.tabs.map((tab) => `<section class="tnf-panel ${tab.id === activeTabId ? "active" : ""}" data-panel="${tab.id}">${tab.html}</section>`).join("")}
       </div>
     `;
 
@@ -220,16 +220,19 @@
         position: fixed;
         right: 20px;
         top: 80px;
-        width: 410px;
+        width: 430px;
         max-height: 80vh;
         overflow: auto;
         z-index: 2147483647;
         background: #090c10;
         color: #f4f7fb;
         border: 1px solid #2b3746;
-        border-radius: 8px;
-        box-shadow: 0 20px 70px rgba(0,0,0,.45);
+        border-radius: 10px;
+        box-shadow: 0 24px 80px rgba(0,0,0,.52);
         font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      #${SIDEBAR_ID} * {
+        box-sizing: border-box;
       }
       #${SIDEBAR_ID} .tnf-sidebar-head {
         position: sticky;
@@ -237,36 +240,35 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 13px 14px;
+        padding: 16px 18px;
         background: #10161e;
         border-bottom: 1px solid #2b3746;
       }
       #${SIDEBAR_ID} .tnf-sidebar-head strong {
         display: block;
-        font-size: 14px;
+        font-size: 17px;
         line-height: 1.2;
       }
       #${SIDEBAR_ID} .tnf-tabs {
         position: sticky;
-        top: 58px;
+        top: 70px;
         z-index: 2;
-        display: flex;
-        gap: 6px;
-        overflow-x: auto;
-        padding: 9px 10px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        padding: 12px;
         background: #090c10;
         border-bottom: 1px solid #2b3746;
       }
       #${SIDEBAR_ID} .tnf-tab {
-        flex: 0 0 auto;
-        min-height: 28px;
-        padding: 0 9px;
+        min-height: 36px;
+        padding: 0 10px;
         border: 1px solid #2b3746;
         border-radius: 8px;
         background: #151d27;
         color: #aeb9c8;
         cursor: pointer;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 800;
       }
       #${SIDEBAR_ID} .tnf-tab.active {
@@ -276,7 +278,7 @@
       }
       #${SIDEBAR_ID} .tnf-panel {
         display: none;
-        padding: 10px;
+        padding: 14px;
       }
       #${SIDEBAR_ID} .tnf-panel.active {
         display: block;
@@ -288,8 +290,8 @@
         font-size: 11px;
       }
       #${SIDEBAR_ID} .tnf-close {
-        width: 28px;
-        height: 28px;
+        width: 34px;
+        height: 34px;
         border: 1px solid #2b3746;
         border-radius: 8px;
         background: #1b2531;
@@ -297,27 +299,27 @@
         cursor: pointer;
       }
       #${SIDEBAR_ID} .tnf-card {
-        margin: 0 0 10px;
-        padding: 12px;
+        margin: 0 0 12px;
+        padding: 14px;
         background: #10161e;
         border: 1px solid #2b3746;
-        border-radius: 8px;
+        border-radius: 10px;
       }
       #${SIDEBAR_ID} .tnf-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        margin-bottom: 10px;
+        gap: 10px;
+        margin-bottom: 12px;
       }
       #${SIDEBAR_ID} .tnf-stat {
-        padding: 10px;
+        padding: 12px;
         background: #10161e;
         border: 1px solid #2b3746;
-        border-radius: 8px;
+        border-radius: 10px;
       }
       #${SIDEBAR_ID} .tnf-stat span {
         display: block;
-        font-size: 16px;
+        font-size: 17px;
         font-weight: 900;
       }
       #${SIDEBAR_ID} .tnf-stat small {
@@ -327,9 +329,9 @@
         font-size: 11px;
       }
       #${SIDEBAR_ID} .tnf-section-title {
-        margin: 12px 0 8px;
+        margin: 14px 0 10px;
         color: #f4f7fb;
-        font-size: 13px;
+        font-size: 15px;
         font-weight: 900;
       }
       #${SIDEBAR_ID} .tnf-pill-row {
@@ -340,6 +342,7 @@
       }
       #${SIDEBAR_ID} .tnf-pill {
         display: inline-flex;
+        align-items: center;
         padding: 4px 8px;
         border-radius: 999px;
         background: #202a36;
@@ -366,30 +369,31 @@
       }
       #${SIDEBAR_ID} .tnf-score {
         display: inline-flex;
-        margin-bottom: 8px;
-        padding: 3px 8px;
+        margin-bottom: 10px;
+        padding: 5px 10px;
         border-radius: 999px;
         background: #ffcc00;
         color: #111;
-        font-weight: 700;
-        font-size: 11px;
+        font-weight: 900;
+        font-size: 12px;
       }
       #${SIDEBAR_ID} .tnf-text {
         font-size: 13px;
-        line-height: 1.45;
+        line-height: 1.55;
         color: #e7edf5;
       }
       #${SIDEBAR_ID} .tnf-meta {
-        margin: 8px 0;
+        margin: 10px 0;
         color: #9facbd;
         font-size: 12px;
+        line-height: 1.45;
       }
       #${SIDEBAR_ID} .tnf-empty {
-        padding: 14px;
+        padding: 16px;
         color: #9facbd;
-        background: #171d25;
+        background: #10161e;
         border: 1px dashed #344154;
-        border-radius: 8px;
+        border-radius: 10px;
         font-size: 13px;
         line-height: 1.45;
       }
@@ -397,6 +401,7 @@
         color: #69a7ff;
         font-size: 12px;
         text-decoration: none;
+        font-weight: 800;
       }
       #${SIDEBAR_ID} .tnf-card-actions {
         display: flex;
@@ -415,27 +420,68 @@
         font-size: 12px;
         font-weight: 800;
       }
-      #${SIDEBAR_ID} .tnf-action.danger {
-        background: rgba(255,95,109,.13);
-        color: #ffc3c8;
-        border-color: rgba(255,95,109,.36);
+      #${SIDEBAR_ID} .tnf-asset-card {
+        position: relative;
+        overflow: hidden;
+        padding: 15px;
       }
-      #${SIDEBAR_ID} .tnf-mini-filter {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
+      #${SIDEBAR_ID} .tnf-asset-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 5px;
+        background: #8b98a8;
+      }
+      #${SIDEBAR_ID} .tnf-asset-card.bullish {
+        background: rgba(20, 199, 132, .12);
+        border-color: rgba(20, 199, 132, .42);
+      }
+      #${SIDEBAR_ID} .tnf-asset-card.bullish::before {
+        background: #14c784;
+      }
+      #${SIDEBAR_ID} .tnf-asset-card.bearish {
+        background: rgba(255, 95, 109, .12);
+        border-color: rgba(255, 95, 109, .44);
+      }
+      #${SIDEBAR_ID} .tnf-asset-card.bearish::before {
+        background: #ff5f6d;
+      }
+      #${SIDEBAR_ID} .tnf-asset-card.mixed,
+      #${SIDEBAR_ID} .tnf-asset-card.neutral {
+        background: rgba(244, 211, 94, .10);
+        border-color: rgba(244, 211, 94, .32);
+      }
+      #${SIDEBAR_ID} .tnf-asset-card.mixed::before,
+      #${SIDEBAR_ID} .tnf-asset-card.neutral::before {
+        background: #f4d35e;
+      }
+      #${SIDEBAR_ID} .tnf-asset-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
         margin-bottom: 10px;
       }
-      #${SIDEBAR_ID} .tnf-mini-filter select {
-        width: 100%;
-        min-height: 32px;
-        border: 1px solid #2b3746;
-        border-radius: 8px;
-        background: #0c1118;
+      #${SIDEBAR_ID} .tnf-asset-symbol {
         color: #f4f7fb;
-        padding: 0 8px;
-        font: inherit;
+        font-size: 18px;
+        font-weight: 950;
+      }
+      #${SIDEBAR_ID} .tnf-asset-score {
+        color: #dce6f2;
         font-size: 12px;
+        font-weight: 900;
+      }
+      #${SIDEBAR_ID} .tnf-asset-body {
+        display: grid;
+        gap: 9px;
+      }
+      #${SIDEBAR_ID} .tnf-driver-list {
+        margin: 8px 0 0;
+        padding-left: 18px;
+        color: #dce6f2;
+        font-size: 12px;
+        line-height: 1.45;
       }
     `;
 
@@ -447,40 +493,18 @@
         sidebar.querySelectorAll(".tnf-panel").forEach((panel) => panel.classList.toggle("active", panel.dataset.panel === tab));
       });
     });
-    sidebar.querySelectorAll("[data-journal-tweet]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const tweet = sortedTweets.find((item) => item.id === button.dataset.journalTweet);
-        if (!tweet) return;
-        await TNFStorage.saveJournalEntry(buildJournalEntry(tweet));
-        button.textContent = "Saved";
-        button.disabled = true;
-      });
-    });
-    sidebar.querySelectorAll("[data-delete-journal]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        await TNFStorage.deleteJournalEntry(button.dataset.deleteJournal);
-        button.closest(".tnf-card").remove();
-      });
-    });
-    sidebar.querySelectorAll("[data-journal-filter]").forEach((select) => {
-      select.addEventListener("change", () => applyJournalFilters(sidebar));
-    });
     document.documentElement.appendChild(style);
     document.documentElement.appendChild(sidebar);
     return { ok: true };
   }
 
-  function buildSidebarDashboard(tweets, rawCount, sessionBrief, journal) {
+  function buildSidebarDashboard(tweets, rawCount, sessionBrief) {
     const today = buildTodayPanel(tweets, rawCount, sessionBrief);
     return {
       tabs: [
-        { id: "today", label: "Today", html: today },
-        { id: "macro", label: "Macro Desk", html: buildMacroPanel(tweets) },
         { id: "assets", label: "Assets", html: buildAssetsPanel(tweets) },
-        { id: "calendar", label: "Calendar Risk", html: buildCalendarPanel(tweets) },
-        { id: "journal", label: "Journal", html: buildJournalPanel(journal) },
-        { id: "coach", label: "Coach", html: buildPlaceholderPanel("Coach", "Coaching Review will use saved journal entries once the journal sprint is implemented.") },
-        { id: "settings", label: "Settings", html: buildPlaceholderPanel("Settings", "Use the extension options page for API key, prompt, watchlist, interval, and keyword settings.") }
+        { id: "today", label: "Today", html: today },
+        { id: "macro", label: "Macro Desk", html: buildMacroPanel(tweets) }
       ]
     };
   }
@@ -560,95 +584,30 @@
     const assets = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
     if (assets.length === 0) return '<div class="tnf-empty">No watched assets detected in filtered tweets.</div>';
     return assets.map(([asset, items]) => {
-      const avg = Math.round(items.reduce((sum, item) => sum + Number(item.tweet.contextScoreValue || 0), 0) / items.length);
-      const bias = inferAssetBias(items.map((item) => item.tweet));
+      const assetTweets = items.map((item) => item.tweet);
+      const avg = Math.round(assetTweets.reduce((sum, tweet) => sum + Number(tweet.contextScoreValue || 0), 0) / assetTweets.length);
+      const bias = inferAssetBias(assetTweets);
+      const risk = assetTweets.some((tweet) => tweet.contextRiskLevel === "high") ? "high" : avg >= 55 ? "medium" : "low";
+      const drivers = getTopItems(assetTweets.map((tweet) => tweet.macroTheme || "").filter(Boolean), 3);
+      const topTweet = assetTweets.sort((a, b) => Number(b.contextScoreValue || 0) - Number(a.contextScoreValue || 0))[0];
       return `
-        <div class="tnf-card">
-          <div class="tnf-section-title">${escapeHtml(asset)}</div>
-          <div class="tnf-pill-row">
-            <span class="tnf-pill ${escapeAttribute(bias)}">${escapeHtml(bias)}</span>
-            <span class="tnf-pill">Context ${avg}/100</span>
-            <span class="tnf-pill">${items.length} tweet(s)</span>
+        <div class="tnf-card tnf-asset-card ${escapeAttribute(bias)}">
+          <div class="tnf-asset-head">
+            <div class="tnf-asset-symbol">${escapeHtml(asset)}</div>
+            <div class="tnf-asset-score">Context ${escapeHtml(String(avg))}/100</div>
           </div>
-          <div class="tnf-text">News-based context only. No buy/sell signal.</div>
+          <div class="tnf-asset-body">
+            <div class="tnf-pill-row">
+              <span class="tnf-pill ${escapeAttribute(risk)}">${escapeHtml(risk)} risk</span>
+              <span class="tnf-pill">${assetTweets.length} supporting tweet(s)</span>
+            </div>
+            <div class="tnf-text">${escapeHtml(getAssetContextLine(asset, bias, risk, topTweet))}</div>
+            ${drivers.length ? `<ul class="tnf-driver-list">${drivers.map((driver) => `<li>${escapeHtml(driver)}</li>`).join("")}</ul>` : ""}
+            ${topTweet && topTweet.url ? `<a href="${escapeAttribute(topTweet.url)}" target="_blank" rel="noreferrer">Open strongest tweet</a>` : ""}
+          </div>
         </div>
       `;
     }).join("");
-  }
-
-  function buildCalendarPanel(tweets) {
-    const events = {};
-    tweets.forEach((tweet) => {
-      const terms = TNFCockpit.detectCalendarTerms(`${tweet.text || ""} ${(tweet.detectedKeywords || []).join(" ")}`.toLowerCase());
-      terms.forEach((term) => {
-        if (!events[term]) events[term] = { term, tweets: [] };
-        events[term].tweets.push(tweet);
-      });
-    });
-    const rows = Object.values(events).sort((a, b) => b.tweets.length - a.tweets.length);
-    if (rows.length === 0) return '<div class="tnf-empty">No calendar risk terms detected in the latest filtered tweets.</div>';
-    return rows.map((event) => {
-      const assets = getTopItems(event.tweets.flatMap((tweet) => tweet.affectedAssets || []), 4);
-      const risk = event.tweets.some((tweet) => tweet.contextRiskLevel === "high") || event.tweets.length > 1 ? "high" : "medium";
-      return `
-        <div class="tnf-card">
-          <div class="tnf-section-title">${escapeHtml(event.term.toUpperCase())}</div>
-          <div class="tnf-pill-row">
-            <span class="tnf-pill ${risk}">${escapeHtml(risk)} risk</span>
-            <span class="tnf-pill">${event.tweets.length} mention(s)</span>
-          </div>
-          <div class="tnf-meta">Assets: ${escapeHtml(assets.join(", ") || "No direct asset match")}</div>
-          <div class="tnf-text">Event-risk context detected. Avoid treating headlines as trade instructions.</div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  function buildJournalPanel(journal) {
-    const entries = Array.isArray(journal) ? journal.slice(0, 8) : [];
-    if (entries.length === 0) {
-      return '<div class="tnf-empty">No journal entries yet. Use Save to Journal on a tweet card to store watch-only context.</div>';
-    }
-
-    const instruments = Array.from(new Set(entries.map((entry) => entry.instrument).filter(Boolean))).sort();
-    const results = Array.from(new Set(entries.map((entry) => entry.result).filter(Boolean))).sort();
-
-    return `
-      <div class="tnf-mini-filter">
-        <select data-journal-filter="instrument" aria-label="Filter journal by instrument">
-          <option value="">All instruments</option>
-          ${instruments.map((instrument) => `<option value="${escapeAttribute(instrument)}">${escapeHtml(instrument)}</option>`).join("")}
-        </select>
-        <select data-journal-filter="result" aria-label="Filter journal by result">
-          <option value="">All results</option>
-          ${results.map((result) => `<option value="${escapeAttribute(result)}">${escapeHtml(result)}</option>`).join("")}
-        </select>
-      </div>
-      ${entries.map((entry) => `
-      <div class="tnf-card" data-journal-entry data-instrument="${escapeAttribute(entry.instrument || "")}" data-result="${escapeAttribute(entry.result || "")}">
-        <div class="tnf-section-title">${escapeHtml(entry.instrument || "Unknown instrument")}</div>
-        <div class="tnf-pill-row">
-          <span class="tnf-pill">${escapeHtml(entry.tradeIdea || "watch_only")}</span>
-          <span class="tnf-pill">${escapeHtml(entry.result || "pending")}</span>
-          <span class="tnf-pill">confidence ${escapeHtml(String(entry.confidence || 0))}/5</span>
-        </div>
-        <div class="tnf-text">${escapeHtml(entry.notes || "")}</div>
-        <div class="tnf-meta">${escapeHtml(formatDate(entry.createdAt))} | ${escapeHtml(entry.setup || "news_reaction")} | ${escapeHtml(entry.emotion || "calm")}</div>
-        <div class="tnf-card-actions">
-          <button type="button" class="tnf-action danger" data-delete-journal="${escapeAttribute(entry.id)}">Delete</button>
-        </div>
-      </div>
-      `).join("")}
-    `;
-  }
-
-  function buildPlaceholderPanel(title, message) {
-    return `
-      <div class="tnf-empty">
-        <strong>${escapeHtml(title)}</strong><br>
-        ${escapeHtml(message)}
-      </div>
-    `;
   }
 
   function renderSidebarTweetCard(tweet) {
@@ -663,33 +622,9 @@
         <div class="tnf-meta">${escapeHtml(tweet.direction || "neutral")} | ${escapeHtml((tweet.categories || []).join(" / "))}</div>
         <div class="tnf-card-actions">
           ${tweet.url ? `<a href="${escapeAttribute(tweet.url)}" target="_blank" rel="noreferrer">Open Tweet</a>` : ""}
-          <button type="button" class="tnf-action" data-journal-tweet="${escapeAttribute(tweet.id)}">Save to Journal</button>
         </div>
       </div>
     `;
-  }
-
-  function buildJournalEntry(tweet) {
-    const instrument = (tweet.affectedAssets && tweet.affectedAssets[0]) || "XAUUSD";
-    return {
-      id: TNFUtils.simpleHash(`journal:${tweet.id}:${Date.now()}`),
-      createdAt: new Date().toISOString(),
-      linkedTweetIds: [tweet.id],
-      instrument,
-      tradeIdea: "watch_only",
-      setup: "news_reaction",
-      confidence: 3,
-      emotion: "calm",
-      followedPlan: true,
-      result: "pending",
-      notes: tweet.summary || tweet.text || "",
-      marketContextSnapshot: {
-        riskTone: tweet.contextRiskLevel || "unknown",
-        mainDriver: tweet.macroTheme || "",
-        contextScore: tweet.contextScoreValue || 0,
-        affectedAssets: tweet.affectedAssets || []
-      }
-    };
   }
 
   function groupBy(items, getKey) {
@@ -724,6 +659,21 @@
     return "neutral";
   }
 
+  function getAssetContextLine(asset, bias, risk, topTweet) {
+    const driver = topTweet && topTweet.macroTheme ? topTweet.macroTheme : "latest filtered news";
+    const riskText = risk === "high" ? "high event risk" : risk === "medium" ? "moderate event risk" : "limited event risk";
+    if (bias === "bullish") {
+      return `${asset} has a constructive news read from ${driver}, with ${riskText}. Treat it as context, not a trade signal.`;
+    }
+    if (bias === "bearish") {
+      return `${asset} has a negative news read from ${driver}, with ${riskText}. Treat it as context, not a trade signal.`;
+    }
+    if (bias === "mixed") {
+      return `${asset} has conflicting news drivers around ${driver}. Wait for clearer confirmation before relying on the read.`;
+    }
+    return `${asset} has no clear directional news read yet. Current context is informational, not actionable.`;
+  }
+
   function escapeHtml(value) {
     return String(value || "")
       .replace(/&/g, "&amp;")
@@ -734,25 +684,6 @@
 
   function escapeAttribute(value) {
     return escapeHtml(value).replace(/'/g, "&#39;");
-  }
-
-  function formatDate(value) {
-    if (!value) return "Unknown date";
-    try {
-      return new Date(value).toLocaleString();
-    } catch (error) {
-      return value;
-    }
-  }
-
-  function applyJournalFilters(sidebar) {
-    const instrument = sidebar.querySelector('[data-journal-filter="instrument"]')?.value || "";
-    const result = sidebar.querySelector('[data-journal-filter="result"]')?.value || "";
-    sidebar.querySelectorAll("[data-journal-entry]").forEach((entry) => {
-      const matchesInstrument = !instrument || entry.dataset.instrument === instrument;
-      const matchesResult = !result || entry.dataset.result === result;
-      entry.hidden = !(matchesInstrument && matchesResult);
-    });
   }
 
   function delay(milliseconds) {
