@@ -81,10 +81,21 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
   await chrome.storage.local.remove("tnf_pending_auto_scan");
 
-  setTimeout(() => {
-    chrome.tabs.sendMessage(tabId, { type: "TNF_AUTO_SCAN_AFTER_REFRESH" }).catch(() => {
-      // The content script may not be ready if X delayed rendering. The next manual scan remains available.
-    });
+  setTimeout(async () => {
+    try {
+      await chrome.tabs.sendMessage(tabId, { type: "TNF_AUTO_SCAN_AFTER_REFRESH" });
+    } catch (error) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          files: CONTENT_SCRIPT_FILES
+        });
+        await wait(700);
+        await chrome.tabs.sendMessage(tabId, { type: "TNF_AUTO_SCAN_AFTER_REFRESH" });
+      } catch (injectionError) {
+        // The next manual scan remains available if X delayed or blocked content script execution.
+      }
+    }
   }, 3500);
 });
 

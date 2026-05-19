@@ -77,8 +77,8 @@
   async function checkActivePage() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     els.pageStatus.textContent = tab && TNFUtils.isTwitterUrl(tab.url)
-      ? "Ready to scan visible tweets on this X/Twitter page."
-      : "Open x.com or twitter.com to scan visible tweets.";
+      ? "Ready to slow-scan the latest 10 tweets on this X/Twitter page."
+      : "Open x.com or twitter.com to scan the latest 10 tweets.";
   }
 
   async function runManualScan() {
@@ -98,7 +98,7 @@
       }
       renderStats(response);
       renderTweets();
-      showMessage(response.message || `Scan complete. ${response.relevantCount} relevant tweets found.`);
+      showMessage(response.message || `Scan complete. ${response.scannedCount} latest tweets checked, ${response.savedCount || 0} new relevant tweets added.`);
     } finally {
       setLoading(false);
     }
@@ -358,7 +358,7 @@
 
   function setLoading(isLoading) {
     els.scanButton.disabled = isLoading;
-    els.scanButton.textContent = isLoading ? "Scanning..." : "Scan Market News";
+    els.scanButton.textContent = isLoading ? "Slow scanning..." : "Scan Latest 10 Tweets";
   }
 
   function escapeHtml(value) {

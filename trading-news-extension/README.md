@@ -6,7 +6,8 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 
 ## Features
 
-- Manual scan from the popup with `Scan Trading News`.
+- Manual slow scan from the popup with `Scan Latest 10 Tweets`.
+- The scan returns to the top of the opened X/Twitter page, scrolls slowly, and stops after 10 unique tweets.
 - Optional auto-refresh with a configurable interval, disabled by default.
 - Minimum auto-refresh interval: 5 minutes.
 - Auto-refresh only runs on the active tab when it is on `x.com` or `twitter.com`.
@@ -36,7 +37,7 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 
 1. Open a page on X/Twitter, for example `https://x.com/some_account`.
 2. Click the extension icon.
-3. Click `Scan Trading News`.
+3. Click `Scan Latest 10 Tweets`.
 4. Review the filtered tweets in the popup.
 5. Use filters to focus on high impact, XAUUSD, USD, Fed, Inflation, or Geopolitics.
 6. Click `Open Tweet` when a tweet URL is available.
@@ -57,9 +58,9 @@ When enabled, the extension:
 
 1. Waits for the configured interval.
 2. Refreshes only the active X/Twitter tab.
-3. Waits briefly for visible tweets to load.
-4. Scans visible tweets once.
-5. Saves only relevant non-duplicate tweets.
+3. Waits briefly for tweets to load.
+4. Slowly scans the latest 10 unique tweets.
+5. Saves only new relevant non-duplicate tweets.
 
 The interval cannot be lower than 5 minutes. This keeps the behavior non-aggressive.
 
@@ -141,10 +142,10 @@ To enable AI analysis:
 3. Set the model name, for example `gpt-4.1-mini`.
 4. Click `Save Settings`.
 5. Open the popup on an X/Twitter page.
-6. Click `Scan Market News`.
+6. Click `Scan Latest 10 Tweets`.
 7. Click `Analyze with OpenAI`.
 
-If the local keyword filter finds `0 relevant` items, the AI analysis can still use the visible tweets captured during the scan. This is useful when a news account posts market-moving headlines that do not match your current keyword list yet.
+If the local keyword filter finds `0 relevant` items, the AI analysis can still use the latest 10 visible tweets captured during the slow scan. This is useful when a news account posts market-moving headlines that do not match your current keyword list yet.
 
 The AI output summarizes:
 

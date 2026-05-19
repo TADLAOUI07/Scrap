@@ -5,12 +5,15 @@
   globalThis.__TNF_CONTENT_LOADED__ = true;
 
   const SIDEBAR_ID = "tnf-sidebar";
+  const LATEST_TWEET_LIMIT = 10;
+  const SLOW_SCROLL_DELAY_MS = 1800;
+  const MAX_SCROLL_STEPS = 6;
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!message || !message.type) return false;
 
     if (message.type === "TNF_MANUAL_SCAN") {
-      scanVisibleTweets("manual").then(sendResponse);
+      scanLatestTweets("manual").then(sendResponse);
       return true;
     }
 
@@ -37,12 +40,35 @@
       if (document.querySelectorAll("article").length > 0) break;
       await delay(500);
     }
-    return scanVisibleTweets("auto");
+    return scanLatestTweets("auto-refresh");
+  }
+
+  async function scanLatestTweets(source) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    await delay(1200);
+
+    const rawTweets = [];
+    const seen = new Set();
+
+    collectTweets(rawTweets, seen);
+
+    let step = 0;
+    while (rawTweets.length < LATEST_TWEET_LIMIT && step < MAX_SCROLL_STEPS) {
+      window.scrollBy({ top: Math.round(window.innerHeight * 0.75), behavior: "smooth" });
+      await delay(SLOW_SCROLL_DELAY_MS);
+      collectTweets(rawTweets, seen);
+      step += 1;
+    }
+
+    return processTweets(rawTweets.slice(0, LATEST_TWEET_LIMIT), source, "latest-10-slow-scroll");
   }
 
   async function scanVisibleTweets(source) {
+    return processTweets(extractVisibleTweets(), source, "visible-only");
+  }
+
+  async function processTweets(rawTweets, source, scanMode) {
     const settings = await TNFStorage.getSettings();
-    const rawTweets = extractVisibleTweets();
     const classified = rawTweets
       .map((tweet) => TNFScoring.classifyTweet(tweet, settings))
       .filter(Boolean);
@@ -57,9 +83,13 @@
       relevantCount: deduped.length,
       savedCount: saved.savedCount,
       duplicateCount: saved.duplicateCount,
+      scanMode,
+      limit: LATEST_TWEET_LIMIT,
       rawTweets: rawTweets.map(normalizeRawTweetForAnalysis),
       tweets: deduped.sort((a, b) => b.impactScore - a.impactScore),
-      message: rawTweets.length === 0 ? "No visible tweets found on this page." : "",
+      message: rawTweets.length === 0
+        ? "No visible tweets found on this page."
+        : `Latest scan complete. ${rawTweets.length} tweets checked, ${saved.savedCount} new relevant tweets added.`,
       scannedAt: new Date().toISOString()
     };
 
@@ -78,6 +108,15 @@
       })
       .map(extractTweetFromArticle)
       .filter((tweet) => tweet && tweet.text && tweet.text.length > 10);
+  }
+
+  function collectTweets(target, seen) {
+    extractVisibleTweets().forEach((tweet) => {
+      const id = tweet.url || TNFUtils.simpleHash(`${tweet.author || ""}:${tweet.text || ""}`);
+      if (seen.has(id) || target.length >= LATEST_TWEET_LIMIT) return;
+      seen.add(id);
+      target.push(tweet);
+    });
   }
 
   function extractTweetFromArticle(article) {

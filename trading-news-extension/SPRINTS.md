@@ -15,8 +15,8 @@ Ce qui est inclus :
 - Page options/settings.
 - Content script sur `x.com` et `twitter.com`.
 - Background service worker avec `chrome.alarms`.
-- Scan manuel des tweets visibles.
-- Auto-refresh optionnel avec intervalle configurable, minimum 5 minutes.
+- Scan manuel lent des 10 derniers tweets.
+- Auto-refresh optionnel avec intervalle configurable, minimum 5 minutes, puis scan lent des 10 derniers tweets.
 - Analyse OpenAI optionnelle avec cle utilisateur stockee localement.
 - Filtre `News for PAIR` pour Forex, crypto, actions, indices et commodities.
 - Filtrage local par mots-cles trading.
@@ -54,20 +54,23 @@ Fichiers principaux :
 - `popup.js`
 - `popup.css`
 
-## Sprint 2 - Scan manuel des tweets visibles
+## Sprint 2 - Scan manuel lent des 10 derniers tweets
 
-Objectif : permettre a l'utilisateur de scanner uniquement les tweets visibles sur la page X/Twitter ouverte.
+Objectif : permettre a l'utilisateur de scanner les 10 derniers tweets de la page X/Twitter ouverte avec un scroll lent et limite.
 
 Livrables :
 
-- Bouton `Scan Trading News`.
+- Bouton `Scan Latest 10 Tweets`.
 - Detection des tweets via les balises `article`.
+- Retour en haut de la timeline avant scan.
+- Scroll lent par etapes.
+- Arret automatique a 10 tweets uniques.
 - Extraction du texte.
 - Extraction de l'auteur si disponible.
 - Extraction de la date/heure si disponible.
 - Extraction de l'URL du tweet si disponible.
 - Message clair si aucun tweet visible n'est trouve.
-- Aucun auto-scroll.
+- Aucun scroll infini.
 - Aucun appel a des endpoints internes X/Twitter.
 
 Statut : fait.
@@ -197,7 +200,7 @@ Livrables :
 - Refresh uniquement si l'URL est `x.com` ou `twitter.com`.
 - Aucun nouvel onglet ouvert automatiquement.
 - Apres refresh, attente du chargement de la page.
-- Scan automatique une seule fois apres refresh.
+- Scan automatique lent des 10 derniers tweets une seule fois apres refresh.
 - Deduplication avant sauvegarde.
 - Desactivation possible a tout moment.
 
@@ -361,7 +364,7 @@ https://x.com/nom_du_compte
 ```
 
 2. Cliquer sur l'icone de l'extension.
-3. Cliquer sur `Scan Trading News`.
+3. Cliquer sur `Scan Latest 10 Tweets`.
 4. Verifier :
    - nombre de tweets scannes,
    - nombre de tweets pertinents,
@@ -380,7 +383,7 @@ https://x.com/nom_du_compte
 4. Verifier que le statut passe a `Auto-refresh: ON`.
 5. Attendre l'intervalle configure.
 6. L'onglet actif X/Twitter est recharge.
-7. Apres chargement, l'extension scanne une seule fois les tweets visibles.
+7. Apres chargement, l'extension scanne lentement les 10 derniers tweets.
 8. Les tweets pertinents non dupliques sont sauvegardes.
 
 Pour desactiver :
@@ -404,7 +407,7 @@ Pour desactiver :
 3. Choisir le modele, par exemple `gpt-4.1-mini`.
 4. Cliquer `Save Settings`.
 5. Ouvrir une page X/Twitter.
-6. Cliquer `Scan Market News`.
+6. Cliquer `Scan Latest 10 Tweets`.
 7. Choisir une paire dans `News for pair / market`.
 8. Cliquer `Analyze with OpenAI`.
 
@@ -445,7 +448,7 @@ Ces elements sont dans la roadmap future, pas dans le MVP actuel :
 
 ## Notes importantes
 
-- L'extension lit uniquement les tweets visibles sur la page ouverte.
+- L'extension lit uniquement les tweets rendus dans la page ouverte, avec un scroll lent limite aux 10 derniers tweets.
 - Elle ne fait pas de scraping agressif.
 - Elle ne contourne pas les protections de X/Twitter.
 - Elle n'utilise pas les endpoints internes de X/Twitter.
