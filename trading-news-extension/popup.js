@@ -3,6 +3,7 @@
 
   const state = {
     tweets: [],
+    rawTweets: [],
     history: [],
     filter: "all",
     settings: null
@@ -19,6 +20,7 @@
     state.history = await TNFStorage.getHistory();
     const lastScan = await TNFStorage.getLastScan();
     state.tweets = lastScan && Array.isArray(lastScan.tweets) ? lastScan.tweets : state.history;
+    state.rawTweets = lastScan && Array.isArray(lastScan.rawTweets) ? lastScan.rawTweets : [];
     renderSettings();
     renderStats(lastScan);
     renderTweets();
@@ -89,9 +91,10 @@
         return;
       }
       state.tweets = response.tweets || [];
+      state.rawTweets = response.rawTweets || [];
       state.history = await TNFStorage.getHistory();
-      if (state.settings.aiAutoAnalyze && response.tweets && response.tweets.length > 0) {
-        await analyzeWithAi(response.tweets);
+      if (state.settings.aiAutoAnalyze && getAiInputTweets(response).length > 0) {
+        await analyzeWithAi(getAiInputTweets(response));
       }
       renderStats(response);
       renderTweets();
@@ -180,7 +183,7 @@
   }
 
   async function analyzeWithAi(sourceTweets) {
-    const tweets = Array.isArray(sourceTweets) ? sourceTweets : getFilteredTweets();
+    const tweets = Array.isArray(sourceTweets) ? sourceTweets : getAiInputTweets();
     els.aiPanel.hidden = false;
     els.aiPanel.innerHTML = '<div class="ai-loading">Analyzing market drivers...</div>';
     els.aiAnalyzeButton.disabled = true;
@@ -203,6 +206,18 @@
     } finally {
       els.aiAnalyzeButton.disabled = false;
     }
+  }
+
+  function getAiInputTweets(scanResponse) {
+    const filtered = scanResponse && Array.isArray(scanResponse.tweets)
+      ? scanResponse.tweets
+      : getFilteredTweets();
+    if (filtered.length > 0) return filtered;
+
+    const raw = scanResponse && Array.isArray(scanResponse.rawTweets)
+      ? scanResponse.rawTweets
+      : state.rawTweets;
+    return Array.isArray(raw) ? raw : [];
   }
 
   function renderSettings() {

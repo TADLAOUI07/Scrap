@@ -57,6 +57,7 @@
       relevantCount: deduped.length,
       savedCount: saved.savedCount,
       duplicateCount: saved.duplicateCount,
+      rawTweets: rawTweets.map(normalizeRawTweetForAnalysis),
       tweets: deduped.sort((a, b) => b.impactScore - a.impactScore),
       message: rawTweets.length === 0 ? "No visible tweets found on this page." : "",
       scannedAt: new Date().toISOString()
@@ -93,6 +94,29 @@
       author,
       time: timeElement ? timeElement.getAttribute("datetime") || timeElement.textContent : "",
       url
+    };
+  }
+
+  function normalizeRawTweetForAnalysis(tweet) {
+    const id = tweet.url || TNFUtils.simpleHash(`${tweet.author || ""}:${tweet.text || ""}`);
+    return {
+      id,
+      text: tweet.text || "",
+      author: tweet.author || "Unknown",
+      time: tweet.time || "",
+      url: tweet.url || "",
+      categories: ["Visible X/Twitter News"],
+      impactScore: 1,
+      importanceLabel: "Unfiltered",
+      scoreBadge: "Unfiltered",
+      reason: "Visible tweet captured for optional AI analysis.",
+      detectedKeywords: [],
+      direction: "neutral",
+      selectedPair: "",
+      pairRelevant: false,
+      pairKeywords: [],
+      summary: tweet.text && tweet.text.length > 170 ? `${tweet.text.slice(0, 167).trim()}...` : tweet.text,
+      createdAt: new Date().toISOString()
     };
   }
 

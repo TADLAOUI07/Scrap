@@ -173,7 +173,7 @@ async function analyzeMarketNews(payload) {
   }
 
   if (tweets.length === 0) {
-    return { ok: false, error: "No filtered news available for AI analysis." };
+    return { ok: false, error: "No visible news available for AI analysis. Run Scan Market News first." };
   }
 
   try {

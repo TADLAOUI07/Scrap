@@ -144,6 +144,8 @@ To enable AI analysis:
 6. Click `Scan Market News`.
 7. Click `Analyze with OpenAI`.
 
+If the local keyword filter finds `0 relevant` items, the AI analysis can still use the visible tweets captured during the scan. This is useful when a news account posts market-moving headlines that do not match your current keyword list yet.
+
 The AI output summarizes:
 
 - bullish, bearish, mixed, or neutral market bias,
