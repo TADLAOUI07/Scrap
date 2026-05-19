@@ -2,17 +2,21 @@
 
 Personal Chrome Extension Manifest V3 that scans only the tweets currently visible on an X/Twitter page, filters trading-relevant news locally, scores impact from 0 to 5, and stores useful items in local Chrome storage.
 
-The MVP is fully local and free. It does not use a backend, does not include API keys, does not call internal X/Twitter endpoints, does not auto-scroll, and does not open tabs automatically.
+The local filter works without a backend and without AI. Optional OpenAI analysis can be enabled by adding your own API key in the options page. The key is never hardcoded in the project.
 
 ## Features
 
 - Manual scan from the popup with `Scan Trading News`.
-- Optional auto-refresh every 5 minutes, disabled by default.
+- Optional auto-refresh with a configurable interval, disabled by default.
+- Minimum auto-refresh interval: 5 minutes.
 - Auto-refresh only runs on the active tab when it is on `x.com` or `twitter.com`.
 - Reads visible tweet `article` elements only.
 - Local keyword categories for XAUUSD, USD, Fed, inflation, jobs data, geopolitics, oil/risk sentiment, and EURUSD/ECB.
+- Market coverage for Forex, crypto, stocks, indices, commodities, and economic calendar terms.
+- `News for PAIR` filtering for watched pairs/markets such as XAUUSD, EURUSD, BTCUSD, US100, SPX500, and USOIL.
 - Impact scoring from 0 to 5.
 - Local bullish, bearish, or neutral direction hint based on tweet text.
+- Optional OpenAI market analysis with bullish/bearish/mixed/neutral bias and explicit news drivers.
 - Popup filters: All, High Impact, XAUUSD, USD, Fed, Inflation, Geopolitics.
 - Floating sidebar on X/Twitter via `Show Sidebar`.
 - Local history with deduplication by tweet URL or text hash.
@@ -38,23 +42,26 @@ The MVP is fully local and free. It does not use a backend, does not include API
 6. Click `Open Tweet` when a tweet URL is available.
 7. Click `Show Sidebar` to display relevant trading news directly on the X/Twitter page.
 
-## Auto-Refresh Every 5 Minutes
+## Auto-Refresh
 
 Auto-refresh is disabled by default.
 
 To enable it:
 
 1. Open the popup.
-2. Enable `Auto-refresh every 5 minutes`.
-3. Keep the active tab on `x.com` or `twitter.com`.
+2. Set a refresh interval in minutes.
+3. Enable `Auto-refresh visible page`.
+4. Keep the active tab on `x.com` or `twitter.com`.
 
 When enabled, the extension:
 
-1. Waits 5 minutes.
+1. Waits for the configured interval.
 2. Refreshes only the active X/Twitter tab.
 3. Waits briefly for visible tweets to load.
 4. Scans visible tweets once.
 5. Saves only relevant non-duplicate tweets.
+
+The interval cannot be lower than 5 minutes. This keeps the behavior non-aggressive.
 
 To disable it:
 
@@ -73,9 +80,13 @@ You can configure:
 - Keywords per category.
 - Category enabled/disabled state.
 - Minimum impact score to display.
-- Auto-refresh every 5 minutes.
+- Auto-refresh interval.
+- Watched pairs/markets.
+- Default `News for PAIR` market.
 - Theme: system, light, or dark.
-- Future AI Backend URL, disabled by default.
+- OpenAI API key for optional AI analysis.
+- OpenAI model.
+- Optional AI Backend URL for future backend routing.
 - Export/import settings JSON.
 - Reset settings.
 
@@ -104,7 +115,7 @@ Exports are generated locally in the browser from locally stored data.
 - It does not guarantee trading signals.
 - It does not replace human analysis.
 - It reads only visible tweets.
-- Auto-refresh is optional and limited to every 5 minutes.
+- Auto-refresh is optional and limited to a minimum interval of 5 minutes.
 - Do not use it to bypass X/Twitter rules or protections.
 - Do not store API secrets in the extension code.
 
@@ -119,3 +130,28 @@ Exports are generated locally in the browser from locally stored data.
 - Better bullish/bearish impact detection for XAUUSD.
 - Filter by specific Twitter/X account.
 - Chrome desktop notifications.
+## OpenAI Analysis
+
+OpenAI is optional. The extension still scans, filters, scores, saves, and exports news without an API key.
+
+To enable AI analysis:
+
+1. Open the extension options page.
+2. Paste your OpenAI API key into `OpenAI API Key`.
+3. Set the model name, for example `gpt-4.1-mini`.
+4. Click `Save Settings`.
+5. Open the popup on an X/Twitter page.
+6. Click `Scan Market News`.
+7. Click `Analyze with OpenAI`.
+
+The AI output summarizes:
+
+- bullish, bearish, mixed, or neutral market bias,
+- confidence,
+- macro summary,
+- market drivers,
+- bullish and bearish factors,
+- exact news items that influenced the decision,
+- risk notes.
+
+The key is stored in `chrome.storage.local` for personal use. Do not commit it, share it, or hardcode it in extension files.

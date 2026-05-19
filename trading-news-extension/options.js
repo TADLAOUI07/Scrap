@@ -18,8 +18,14 @@
     [
       "autoRefreshEnabled",
       "autoRefreshState",
+      "autoRefreshMinutes",
       "minimumScore",
+      "selectedPair",
+      "watchedPairs",
       "theme",
+      "openAiApiKey",
+      "openAiModel",
+      "aiAutoAnalyze",
       "aiBackendUrl",
       "categoryList",
       "saveSettings",
@@ -44,11 +50,27 @@
 
   function render() {
     els.autoRefreshEnabled.checked = Boolean(settings.autoRefreshEnabled);
-    els.autoRefreshState.textContent = `Auto-refresh: ${settings.autoRefreshEnabled ? "ON" : "OFF"}`;
+    els.autoRefreshMinutes.value = settings.autoRefreshMinutes || 5;
+    els.autoRefreshState.textContent = `Auto-refresh: ${settings.autoRefreshEnabled ? "ON" : "OFF"} | every ${settings.autoRefreshMinutes || 5} min`;
     els.minimumScore.value = settings.minimumScore;
+    renderPairOptions();
+    els.watchedPairs.value = (settings.watchedPairs || []).join(", ");
     els.theme.value = settings.theme;
+    els.openAiApiKey.value = settings.openAiApiKey || "";
+    els.openAiModel.value = settings.openAiModel || "gpt-4.1-mini";
+    els.aiAutoAnalyze.checked = Boolean(settings.aiAutoAnalyze);
     els.aiBackendUrl.value = settings.aiBackendUrl || "";
     renderCategories();
+  }
+
+  function renderPairOptions() {
+    const pairs = settings.watchedPairs && settings.watchedPairs.length
+      ? settings.watchedPairs
+      : TNFStorage.DEFAULT_SETTINGS.watchedPairs;
+    els.selectedPair.innerHTML = pairs
+      .map((pair) => `<option value="${escapeAttribute(pair)}">${escapeHtml(pair)}</option>`)
+      .join("");
+    els.selectedPair.value = settings.selectedPair || pairs[0];
   }
 
   function renderCategories() {
@@ -79,7 +101,8 @@
 
     await chrome.runtime.sendMessage({
       type: "TNF_SET_AUTO_REFRESH",
-      enabled: settings.autoRefreshEnabled
+      enabled: settings.autoRefreshEnabled,
+      minutes: settings.autoRefreshMinutes
     });
 
     render();
@@ -104,8 +127,17 @@
 
     return {
       autoRefreshEnabled: els.autoRefreshEnabled.checked,
+      autoRefreshMinutes: TNFUtils.clampNumber(els.autoRefreshMinutes.value, 5, 1440),
       minimumScore: TNFUtils.clampNumber(els.minimumScore.value, 0, 5),
+      selectedPair: els.selectedPair.value,
+      watchedPairs: els.watchedPairs.value
+        .split(",")
+        .map((item) => item.trim().toUpperCase())
+        .filter(Boolean),
       theme: els.theme.value,
+      openAiApiKey: els.openAiApiKey.value.trim(),
+      openAiModel: els.openAiModel.value.trim() || "gpt-4.1-mini",
+      aiAutoAnalyze: els.aiAutoAnalyze.checked,
       aiBackendUrl: els.aiBackendUrl.value.trim(),
       categories
     };
@@ -135,7 +167,7 @@
 
   async function resetSettings() {
     settings = await TNFStorage.saveSettings(TNFStorage.DEFAULT_SETTINGS);
-    await chrome.runtime.sendMessage({ type: "TNF_SET_AUTO_REFRESH", enabled: false });
+    await chrome.runtime.sendMessage({ type: "TNF_SET_AUTO_REFRESH", enabled: false, minutes: 5 });
     render();
     showMessage("Settings reset.");
   }
@@ -151,5 +183,9 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function escapeAttribute(value) {
+    return escapeHtml(value).replace(/'/g, "&#39;");
   }
 })();

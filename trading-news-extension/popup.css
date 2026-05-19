@@ -19,8 +19,28 @@
   box-sizing: border-box;
 }
 
+.field {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0e141c;
+  color: var(--text);
+  padding: 0 10px;
+  font: inherit;
+}
+
 body {
-  width: 420px;
+  width: 450px;
   margin: 0;
   background: var(--bg);
   color: var(--text);
@@ -115,12 +135,18 @@ button:disabled {
   padding: 0;
 }
 
-.refresh-card {
+.refresh-card,
+.terminal-card {
   padding: 12px;
   margin-bottom: 12px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
+}
+
+.terminal-card {
+  display: grid;
+  gap: 10px;
 }
 
 .toggle-row {
@@ -146,6 +172,98 @@ input[type="checkbox"] {
   width: 44px;
   height: 24px;
   accent-color: var(--accent);
+}
+
+.ai-panel {
+  padding: 10px;
+  background: #0e141c;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.ai-head {
+  display: grid;
+  gap: 6px;
+}
+
+.ai-bias {
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #d8dee9;
+  color: #111;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ai-bias.bullish {
+  background: #15c784;
+}
+
+.ai-bias.bearish {
+  background: #ff5f6d;
+  color: #fff;
+}
+
+.ai-bias.mixed {
+  background: #f4d35e;
+}
+
+.ai-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.ai-grid div {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.ai-grid small,
+.ai-time {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.ai-grid span {
+  display: block;
+  margin-top: 3px;
+  font-weight: 800;
+}
+
+.ai-section {
+  margin-top: 10px;
+}
+
+.ai-section strong {
+  font-size: 12px;
+}
+
+.ai-section ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.ai-section li {
+  margin-bottom: 4px;
+  color: #dbe5f1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ai-loading,
+.ai-error {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ai-error {
+  color: #ffb6bd;
 }
 
 .stats {

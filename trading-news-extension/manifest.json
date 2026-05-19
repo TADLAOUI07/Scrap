@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Trading News Filter for X/Twitter",
+  "name": "Market Research Terminal for X/Twitter",
   "version": "1.0.0",
-  "description": "Scan visible X/Twitter tweets locally, filter trading-relevant news, score impact, and save useful items.",
+  "description": "Scan visible X/Twitter news, filter market-moving items, and optionally analyze them with OpenAI for trader context.",
   "permissions": [
     "storage",
     "activeTab",
@@ -12,10 +12,15 @@
   ],
   "host_permissions": [
     "https://x.com/*",
-    "https://twitter.com/*"
+    "https://twitter.com/*",
+    "https://api.openai.com/*",
+    "http://localhost/*",
+    "https://localhost/*",
+    "http://127.0.0.1/*",
+    "https://127.0.0.1/*"
   ],
   "action": {
-    "default_title": "Trading News Filter",
+    "default_title": "Market Research Terminal",
     "default_popup": "popup.html"
   },
   "background": {

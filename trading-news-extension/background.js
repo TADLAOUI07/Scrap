@@ -1,7 +1,8 @@
-importScripts("utils.js", "scoring.js", "storage.js");
+importScripts("utils.js", "scoring.js", "storage.js", "ai.js");
 
 const AUTO_REFRESH_ALARM = "tnf_auto_refresh";
 const MIN_REFRESH_MINUTES = 5;
+const CONTENT_SCRIPT_FILES = ["utils.js", "scoring.js", "storage.js", "content.js"];
 
 chrome.runtime.onInstalled.addListener(async () => {
   const settings = await TNFStorage.getSettings();
@@ -23,12 +24,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || !message.type) return false;
 
   if (message.type === "TNF_SET_AUTO_REFRESH") {
-    handleAutoRefreshToggle(Boolean(message.enabled)).then(sendResponse);
+    handleAutoRefreshToggle(Boolean(message.enabled), message.minutes).then(sendResponse);
     return true;
   }
 
   if (message.type === "TNF_SCAN_ACTIVE_TAB") {
     scanActiveTab().then(sendResponse);
+    return true;
+  }
+
+  if (message.type === "TNF_ANALYZE_NEWS") {
+    analyzeMarketNews(message.payload || {}).then(sendResponse);
     return true;
   }
 
@@ -51,7 +57,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!activeTab || !activeTab.id || !TNFUtils.isTwitterUrl(activeTab.url)) {
-    scheduleAutoRefresh(MIN_REFRESH_MINUTES);
+    scheduleAutoRefresh(settings.autoRefreshMinutes || MIN_REFRESH_MINUTES);
     return;
   }
 
@@ -63,7 +69,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   });
 
   chrome.tabs.reload(activeTab.id);
-  scheduleAutoRefresh(MIN_REFRESH_MINUTES);
+  scheduleAutoRefresh(settings.autoRefreshMinutes || MIN_REFRESH_MINUTES);
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
@@ -82,15 +88,16 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   }, 3500);
 });
 
-async function handleAutoRefreshToggle(enabled) {
+async function handleAutoRefreshToggle(enabled, minutes) {
+  const safeMinutes = normalizeRefreshMinutes(minutes);
   const settings = await TNFStorage.saveSettings({
     autoRefreshEnabled: enabled,
-    autoRefreshMinutes: MIN_REFRESH_MINUTES,
-    nextRefreshAt: enabled ? nextRefreshIso(MIN_REFRESH_MINUTES) : ""
+    autoRefreshMinutes: safeMinutes,
+    nextRefreshAt: enabled ? nextRefreshIso(safeMinutes) : ""
   });
 
   if (enabled) {
-    scheduleAutoRefresh(MIN_REFRESH_MINUTES);
+    scheduleAutoRefresh(safeMinutes);
   } else {
     chrome.alarms.clear(AUTO_REFRESH_ALARM);
   }
@@ -99,7 +106,7 @@ async function handleAutoRefreshToggle(enabled) {
 }
 
 function scheduleAutoRefresh(minutes) {
-  const safeMinutes = Math.max(MIN_REFRESH_MINUTES, Number(minutes) || MIN_REFRESH_MINUTES);
+  const safeMinutes = normalizeRefreshMinutes(minutes);
   chrome.alarms.clear(AUTO_REFRESH_ALARM, () => {
     chrome.alarms.create(AUTO_REFRESH_ALARM, {
       delayInMinutes: safeMinutes,
@@ -107,6 +114,10 @@ function scheduleAutoRefresh(minutes) {
     });
   });
   TNFStorage.saveSettings({ nextRefreshAt: nextRefreshIso(safeMinutes) });
+}
+
+function normalizeRefreshMinutes(minutes) {
+  return Math.max(MIN_REFRESH_MINUTES, Number(minutes) || MIN_REFRESH_MINUTES);
 }
 
 function nextRefreshIso(minutes) {
@@ -127,14 +138,59 @@ async function scanActiveTab() {
     const response = await chrome.tabs.sendMessage(activeTab.id, { type: "TNF_MANUAL_SCAN" });
     return response || { ok: false, error: "No response from the page." };
   } catch (error) {
-    return {
-      ok: false,
-      error: "Could not reach the page content script. Reload the X/Twitter tab and try again."
-    };
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: activeTab.id },
+        files: CONTENT_SCRIPT_FILES
+      });
+      await wait(500);
+      const response = await chrome.tabs.sendMessage(activeTab.id, { type: "TNF_MANUAL_SCAN" });
+      return response || { ok: false, error: "No response from the page after script injection." };
+    } catch (injectionError) {
+      return {
+        ok: false,
+        error: "Could not scan this X/Twitter tab. Reload the tab once, then try again."
+      };
+    }
   }
 }
 
 async function handleAutoScanComplete(payload) {
   await TNFStorage.setLastScan(payload);
   return { ok: true };
+}
+
+async function analyzeMarketNews(payload) {
+  const settings = await TNFStorage.getSettings();
+  const tweets = Array.isArray(payload.tweets) ? payload.tweets.slice(0, 20) : [];
+  const pair = payload.pair || settings.selectedPair || "XAUUSD";
+
+  if (!settings.openAiApiKey) {
+    return {
+      ok: false,
+      error: "Add your OpenAI API key in Options before running AI analysis."
+    };
+  }
+
+  if (tweets.length === 0) {
+    return { ok: false, error: "No filtered news available for AI analysis." };
+  }
+
+  try {
+    const analysis = await TNFAI.analyzeMarketNews({ ...settings, selectedPair: pair }, tweets);
+    return {
+      ok: true,
+      analysis,
+      analyzedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message || "OpenAI analysis failed. Check your API key and connection."
+    };
+  }
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

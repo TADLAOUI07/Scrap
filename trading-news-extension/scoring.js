@@ -82,8 +82,57 @@
       name: "EURUSD / ECB",
       enabled: true,
       keywords: ["eurusd", "euro", "ecb", "lagarde", "eurozone", "european central bank"]
+    },
+    {
+      name: "Crypto",
+      enabled: true,
+      keywords: ["bitcoin", "btc", "btcUSD", "ethereum", "eth", "crypto", "stablecoin", "etf inflows"]
+    },
+    {
+      name: "Stocks / Indices",
+      enabled: true,
+      keywords: [
+        "stocks",
+        "equities",
+        "nasdaq",
+        "dow",
+        "s&p",
+        "spx",
+        "sp500",
+        "us100",
+        "earnings",
+        "guidance"
+      ]
+    },
+    {
+      name: "Economic Calendar",
+      enabled: true,
+      keywords: [
+        "economic calendar",
+        "retail sales",
+        "gdp",
+        "ism",
+        "pmi",
+        "consumer confidence",
+        "fomc minutes",
+        "central bank"
+      ]
     }
   ];
+
+  const PAIR_KEYWORDS = {
+    XAUUSD: ["xauusd", "gold", "bullion", "precious metals", "usd", "dxy", "yields", "fed", "cpi", "inflation"],
+    EURUSD: ["eurusd", "euro", "ecb", "lagarde", "eurozone", "usd", "dxy", "fed", "cpi", "inflation"],
+    GBPUSD: ["gbpusd", "pound", "sterling", "boe", "bank of england", "uk", "usd", "fed"],
+    USDJPY: ["usdjpy", "yen", "jpy", "boj", "bank of japan", "japan", "yields", "usd"],
+    BTCUSD: ["btcusd", "bitcoin", "btc", "crypto", "etf", "risk on", "risk off", "liquidity", "fed"],
+    ETHUSD: ["ethusd", "ethereum", "eth", "crypto", "etf", "risk on", "risk off", "liquidity", "fed"],
+    US100: ["us100", "nasdaq", "tech", "stocks", "equities", "yields", "fed", "earnings", "ai"],
+    SPX500: ["spx500", "spx", "s&p", "sp500", "stocks", "equities", "fed", "earnings", "risk on"],
+    NASDAQ: ["nasdaq", "us100", "tech", "stocks", "equities", "yields", "fed", "earnings"],
+    DOW: ["dow", "djia", "industrials", "stocks", "equities", "fed", "earnings"],
+    USOIL: ["usoil", "oil", "crude", "wti", "brent", "opec", "inventories", "middle east"]
+  };
 
   const SCORE_5 = [
     "cpi",
@@ -217,6 +266,17 @@
     return "neutral";
   }
 
+  function getPairRelevance(text, selectedPair) {
+    const pair = String(selectedPair || "").toUpperCase();
+    const keywords = PAIR_KEYWORDS[pair] || [pair.toLowerCase()];
+    const matchedKeywords = keywords.filter((keyword) => hasPhrase(text, keyword));
+    return {
+      pair,
+      isRelevant: matchedKeywords.length > 0,
+      matchedKeywords
+    };
+  }
+
   function buildReason(categories, keywords, score) {
     if (score === 0) return "No clear trading keyword was detected.";
     const categoryText = categories.slice(0, 3).join(", ");
@@ -235,6 +295,7 @@
     const text = rawTweet.text || "";
     const matches = findMatches(text, categories);
     const impactScore = calculateImpactScore(text, matches.detectedKeywords);
+    const pairRelevance = getPairRelevance(text, settings && settings.selectedPair);
     const minimumScore = settings && Number.isFinite(Number(settings.minimumScore))
       ? Number(settings.minimumScore)
       : 1;
@@ -260,6 +321,9 @@
       reason: buildReason(matches.categories, matches.detectedKeywords, impactScore),
       detectedKeywords: matches.detectedKeywords,
       direction: detectDirection(text),
+      selectedPair: pairRelevance.pair,
+      pairRelevant: pairRelevance.isRelevant,
+      pairKeywords: pairRelevance.matchedKeywords,
       summary: summarize(text),
       createdAt: new Date().toISOString()
     };
@@ -271,6 +335,8 @@
     classifyTweet,
     getImportanceLabel,
     getScoreBadge,
-    detectDirection
+    detectDirection,
+    getPairRelevance,
+    PAIR_KEYWORDS
   };
 })();

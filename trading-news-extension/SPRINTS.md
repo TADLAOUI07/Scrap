@@ -16,7 +16,9 @@ Ce qui est inclus :
 - Content script sur `x.com` et `twitter.com`.
 - Background service worker avec `chrome.alarms`.
 - Scan manuel des tweets visibles.
-- Auto-refresh optionnel toutes les 5 minutes.
+- Auto-refresh optionnel avec intervalle configurable, minimum 5 minutes.
+- Analyse OpenAI optionnelle avec cle utilisateur stockee localement.
+- Filtre `News for PAIR` pour Forex, crypto, actions, indices et commodities.
 - Filtrage local par mots-cles trading.
 - Scoring impact de 0 a 5.
 - Classification categorie, direction bullish/bearish/neutral, resume local.
@@ -178,7 +180,7 @@ Fichiers principaux :
 - `popup.js`
 - `popup.css`
 
-## Sprint 6 - Auto-refresh toutes les 5 minutes
+## Sprint 6 - Auto-refresh configurable
 
 Objectif : permettre un refresh automatique controle, non agressif, active uniquement par l'utilisateur.
 
@@ -187,6 +189,7 @@ Livrables :
 - Option desactivee par defaut.
 - Toggle dans le popup.
 - Option dans la page settings.
+- Intervalle configurable par l'utilisateur.
 - Sauvegarde dans `chrome.storage.local`.
 - Utilisation de `chrome.alarms`.
 - Intervalle minimum : 5 minutes.
@@ -199,6 +202,38 @@ Livrables :
 - Desactivation possible a tout moment.
 
 Statut : fait.
+
+## Sprint 11 - Market Research Knowledge Terminal IA
+
+Objectif : ajouter une couche d'analyse marche orientee traders basee sur les news visibles filtrees.
+
+Livrables :
+
+- Champ OpenAI API Key dans les options.
+- Champ modele OpenAI.
+- Bouton `Analyze with OpenAI` dans le popup.
+- Analyse bullish / bearish / mixed / neutral.
+- Mention des news qui influencent la decision.
+- Resume macro.
+- Drivers de marche.
+- Facteurs bullish.
+- Facteurs bearish.
+- Notes de risque.
+- Filtre `News for Pair`.
+- Liste configurable de paires / marches suivis.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `background.js`
+- `popup.html`
+- `popup.js`
+- `popup.css`
+- `options.html`
+- `options.js`
+- `storage.js`
+- `scoring.js`
 
 Fichiers principaux :
 
@@ -340,9 +375,10 @@ https://x.com/nom_du_compte
 
 1. Ouvrir une page `x.com` ou `twitter.com`.
 2. Ouvrir le popup.
-3. Activer `Auto-refresh every 5 minutes`.
+3. Choisir un intervalle en minutes, minimum 5.
+4. Activer `Auto-refresh visible page`.
 4. Verifier que le statut passe a `Auto-refresh: ON`.
-5. Attendre 5 minutes.
+5. Attendre l'intervalle configure.
 6. L'onglet actif X/Twitter est recharge.
 7. Apres chargement, l'extension scanne une seule fois les tweets visibles.
 8. Les tweets pertinents non dupliques sont sauvegardes.
@@ -360,6 +396,24 @@ Pour desactiver :
 3. Les mots-cles doivent etre separes par des virgules.
 4. Cliquer sur `Save Settings`.
 5. Relancer un scan.
+
+## Comment utiliser OpenAI
+
+1. Ouvrir la page options de l'extension.
+2. Coller une cle OpenAI personnelle dans `OpenAI API Key`.
+3. Choisir le modele, par exemple `gpt-4.1-mini`.
+4. Cliquer `Save Settings`.
+5. Ouvrir une page X/Twitter.
+6. Cliquer `Scan Market News`.
+7. Choisir une paire dans `News for pair / market`.
+8. Cliquer `Analyze with OpenAI`.
+
+Important :
+
+- La cle est stockee dans `chrome.storage.local`.
+- La cle n'est pas dans le code.
+- Ne jamais commit une cle API.
+- Pour une version production, preferer un backend personnel entre l'extension et OpenAI.
 
 ## Comment exporter les news
 

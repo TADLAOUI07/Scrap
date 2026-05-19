@@ -10,26 +10,39 @@
     <main class="popup">
       <header class="header">
         <div>
-          <h1>Trading News Filter</h1>
+          <h1>Market Research Terminal</h1>
           <p id="pageStatus">Open X/Twitter to scan visible tweets.</p>
         </div>
         <span class="live-dot" aria-hidden="true"></span>
       </header>
 
       <section class="controls">
-        <button id="scanButton" class="primary">Scan Trading News</button>
+        <button id="scanButton" class="primary">Scan Market News</button>
         <button id="sidebarButton" class="secondary">Show Sidebar</button>
       </section>
 
       <section class="refresh-card">
         <label class="toggle-row">
           <span>
-            <strong>Auto-refresh every 5 minutes</strong>
+            <strong>Auto-refresh visible page</strong>
             <small id="autoStatus">Auto-refresh: OFF</small>
           </span>
           <input id="autoRefreshToggle" type="checkbox" role="switch">
         </label>
+        <label class="field">
+          Refresh interval in minutes
+          <input id="refreshMinutes" type="number" min="5" step="1">
+        </label>
         <button id="disableAutoRefresh" class="link-button">Disable auto-refresh now</button>
+      </section>
+
+      <section class="terminal-card">
+        <label class="field">
+          News for pair / market
+          <select id="pairSelect"></select>
+        </label>
+        <button id="aiAnalyzeButton" class="primary">Analyze with OpenAI</button>
+        <div id="aiPanel" class="ai-panel" hidden></div>
       </section>
 
       <section class="stats">
@@ -47,6 +60,9 @@
         <button class="filter" data-filter="fed">Fed</button>
         <button class="filter" data-filter="inflation">Inflation</button>
         <button class="filter" data-filter="geopolitics">Geopolitics</button>
+        <button class="filter" data-filter="pair">News for Pair</button>
+        <button class="filter" data-filter="crypto">Crypto</button>
+        <button class="filter" data-filter="indices">Indices</button>
       </section>
 
       <section class="actions">

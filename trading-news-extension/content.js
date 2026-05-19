@@ -1,6 +1,9 @@
 (function () {
   "use strict";
 
+  if (globalThis.__TNF_CONTENT_LOADED__) return;
+  globalThis.__TNF_CONTENT_LOADED__ = true;
+
   const SIDEBAR_ID = "tnf-sidebar";
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -78,7 +81,7 @@
 
   function extractTweetFromArticle(article) {
     const textNode = article.querySelector('[data-testid="tweetText"]');
-    const text = TNFUtils.normalizeText(textNode ? textNode.innerText : article.innerText);
+    const text = TNFUtils.normalizeText(textNode ? textNode.innerText : buildFallbackTweetText(article));
     const timeElement = article.querySelector("time");
     const anchor = timeElement ? timeElement.closest("a") : article.querySelector('a[href*="/status/"]');
     const href = anchor ? anchor.getAttribute("href") : "";
@@ -91,6 +94,22 @@
       time: timeElement ? timeElement.getAttribute("datetime") || timeElement.textContent : "",
       url
     };
+  }
+
+  function buildFallbackTweetText(article) {
+    const ignoredSelectors = [
+      '[data-testid="User-Name"]',
+      '[data-testid="socialContext"]',
+      '[role="group"]',
+      'time',
+      'svg',
+      'img'
+    ];
+    const clone = article.cloneNode(true);
+    ignoredSelectors.forEach((selector) => {
+      clone.querySelectorAll(selector).forEach((node) => node.remove());
+    });
+    return clone.innerText || article.innerText || "";
   }
 
   function extractAuthor(article) {
@@ -112,7 +131,7 @@
     sidebar.id = SIDEBAR_ID;
     sidebar.innerHTML = `
       <div class="tnf-sidebar-head">
-        <strong>Trading News</strong>
+        <strong>Market Terminal</strong>
         <button type="button" class="tnf-close" aria-label="Close">x</button>
       </div>
       <div class="tnf-sidebar-list"></div>
@@ -200,7 +219,7 @@
         card.innerHTML = `
           <div class="tnf-score">${tweet.impactScore}/5 ${tweet.scoreBadge || tweet.importanceLabel}</div>
           <div class="tnf-text"></div>
-          <div class="tnf-meta">${escapeHtml(tweet.categories.join(" / "))}</div>
+          <div class="tnf-meta">${escapeHtml(tweet.selectedPair || "")} | ${escapeHtml(tweet.direction || "neutral")} | ${escapeHtml(tweet.categories.join(" / "))}</div>
           ${tweet.url ? `<a href="${escapeAttribute(tweet.url)}" target="_blank" rel="noreferrer">Open Tweet</a>` : ""}
         `;
         card.querySelector(".tnf-text").textContent = tweet.summary || tweet.text;

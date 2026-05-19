@@ -31,8 +31,12 @@
       "scanButton",
       "sidebarButton",
       "autoRefreshToggle",
+      "refreshMinutes",
       "autoStatus",
       "disableAutoRefresh",
+      "pairSelect",
+      "aiAnalyzeButton",
+      "aiPanel",
       "scannedCount",
       "relevantCount",
       "lastScan",
@@ -52,6 +56,9 @@
     els.scanButton.addEventListener("click", runManualScan);
     els.sidebarButton.addEventListener("click", showSidebar);
     els.autoRefreshToggle.addEventListener("change", () => setAutoRefresh(els.autoRefreshToggle.checked));
+    els.refreshMinutes.addEventListener("change", savePopupSettings);
+    els.pairSelect.addEventListener("change", savePopupSettings);
+    els.aiAnalyzeButton.addEventListener("click", analyzeWithAi);
     els.disableAutoRefresh.addEventListener("click", () => setAutoRefresh(false));
     els.exportJson.addEventListener("click", exportJson);
     els.exportCsv.addEventListener("click", exportCsv);
@@ -83,6 +90,9 @@
       }
       state.tweets = response.tweets || [];
       state.history = await TNFStorage.getHistory();
+      if (state.settings.aiAutoAnalyze && response.tweets && response.tweets.length > 0) {
+        await analyzeWithAi(response.tweets);
+      }
       renderStats(response);
       renderTweets();
       showMessage(response.message || `Scan complete. ${response.relevantCount} relevant tweets found.`);
@@ -95,7 +105,8 @@
     els.autoRefreshToggle.checked = enabled;
     const response = await chrome.runtime.sendMessage({
       type: "TNF_SET_AUTO_REFRESH",
-      enabled
+      enabled,
+      minutes: Number(els.refreshMinutes.value)
     });
 
     if (response && response.ok) {
@@ -104,6 +115,24 @@
     } else {
       showMessage("Could not update auto-refresh setting.");
     }
+  }
+
+  async function savePopupSettings() {
+    state.settings = await TNFStorage.saveSettings({
+      autoRefreshMinutes: TNFUtils.clampNumber(els.refreshMinutes.value, 5, 1440),
+      selectedPair: els.pairSelect.value
+    });
+
+    if (state.settings.autoRefreshEnabled) {
+      await chrome.runtime.sendMessage({
+        type: "TNF_SET_AUTO_REFRESH",
+        enabled: true,
+        minutes: state.settings.autoRefreshMinutes
+      });
+    }
+
+    renderSettings();
+    renderTweets();
   }
 
   async function showSidebar() {
@@ -150,13 +179,91 @@
     TNFUtils.downloadText(`trading-news-${Date.now()}.csv`, TNFUtils.toCsv(getFilteredTweets()), "text/csv");
   }
 
+  async function analyzeWithAi(sourceTweets) {
+    const tweets = Array.isArray(sourceTweets) ? sourceTweets : getFilteredTweets();
+    els.aiPanel.hidden = false;
+    els.aiPanel.innerHTML = '<div class="ai-loading">Analyzing market drivers...</div>';
+    els.aiAnalyzeButton.disabled = true;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "TNF_ANALYZE_NEWS",
+        payload: {
+          tweets,
+          pair: els.pairSelect.value
+        }
+      });
+
+      if (!response || !response.ok) {
+        els.aiPanel.innerHTML = `<div class="ai-error">${escapeHtml(response && response.error ? response.error : "AI analysis failed.")}</div>`;
+        return;
+      }
+
+      renderAiAnalysis(response.analysis, response.analyzedAt);
+    } finally {
+      els.aiAnalyzeButton.disabled = false;
+    }
+  }
+
   function renderSettings() {
     const enabled = Boolean(state.settings && state.settings.autoRefreshEnabled);
+    renderPairOptions();
     els.autoRefreshToggle.checked = enabled;
-    els.autoStatus.textContent = `Auto-refresh: ${enabled ? "ON" : "OFF"}`;
+    els.refreshMinutes.value = state.settings.autoRefreshMinutes || 5;
+    els.autoStatus.textContent = `Auto-refresh: ${enabled ? "ON" : "OFF"} | every ${state.settings.autoRefreshMinutes || 5} min`;
     els.nextRefresh.textContent = enabled && state.settings.nextRefreshAt
       ? TNFUtils.formatDateTime(state.settings.nextRefreshAt)
       : "Not scheduled";
+  }
+
+  function renderPairOptions() {
+    const pairs = state.settings.watchedPairs || TNFStorage.DEFAULT_SETTINGS.watchedPairs;
+    els.pairSelect.innerHTML = pairs
+      .map((pair) => `<option value="${escapeAttribute(pair)}">${escapeHtml(pair)}</option>`)
+      .join("");
+    els.pairSelect.value = state.settings.selectedPair || pairs[0];
+  }
+
+  function renderAiAnalysis(analysis, analyzedAt) {
+    const keyNews = Array.isArray(analysis.keyNews) ? analysis.keyNews : [];
+    els.aiPanel.hidden = false;
+    els.aiPanel.innerHTML = `
+      <div class="ai-head">
+        <span class="ai-bias ${escapeAttribute(String(analysis.bias || "neutral").toLowerCase())}">${escapeHtml(analysis.bias || "neutral")}</span>
+        <strong>${escapeHtml(analysis.headline || "Market read")}</strong>
+      </div>
+      <p>${escapeHtml(analysis.macroSummary || "")}</p>
+      <div class="ai-grid">
+        <div><small>Pair</small><span>${escapeHtml(analysis.pair || els.pairSelect.value)}</span></div>
+        <div><small>Confidence</small><span>${escapeHtml(analysis.confidence || "low")}</span></div>
+      </div>
+      ${renderList("Drivers", analysis.marketDrivers)}
+      ${renderList("Bullish", analysis.bullishFactors)}
+      ${renderList("Bearish", analysis.bearishFactors)}
+      ${renderKeyNews(keyNews)}
+      ${renderList("Risk notes", analysis.riskNotes)}
+      <small class="ai-time">Analyzed ${escapeHtml(TNFUtils.formatDateTime(analyzedAt))}</small>
+    `;
+  }
+
+  function renderList(title, items) {
+    if (!Array.isArray(items) || items.length === 0) return "";
+    return `
+      <div class="ai-section">
+        <strong>${escapeHtml(title)}</strong>
+        <ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </div>
+    `;
+  }
+
+  function renderKeyNews(items) {
+    if (!items.length) return "";
+    return `
+      <div class="ai-section">
+        <strong>News that moved the read</strong>
+        <ul>${items.map((item) => `<li>${escapeHtml(item.title || "")}: ${escapeHtml(item.impact || "")}</li>`).join("")}</ul>
+      </div>
+    `;
   }
 
   function renderStats(scan) {
@@ -202,12 +309,15 @@
     const tweets = [...state.tweets].sort((a, b) => b.impactScore - a.impactScore);
     if (state.filter === "all") return tweets;
     if (state.filter === "high") return tweets.filter((tweet) => tweet.impactScore >= 5);
+    if (state.filter === "pair") return tweets.filter((tweet) => tweet.pairRelevant);
     const filterMap = {
       xauusd: "Gold / XAUUSD",
       usd: "USD / DXY / Yields",
       fed: "Fed / Rates",
       inflation: "Inflation",
-      geopolitics: "Geopolitics"
+      geopolitics: "Geopolitics",
+      crypto: "Crypto",
+      indices: "Stocks / Indices"
     };
     return tweets.filter((tweet) => tweet.categories.includes(filterMap[state.filter]));
   }
@@ -233,7 +343,7 @@
 
   function setLoading(isLoading) {
     els.scanButton.disabled = isLoading;
-    els.scanButton.textContent = isLoading ? "Scanning..." : "Scan Trading News";
+    els.scanButton.textContent = isLoading ? "Scanning..." : "Scan Market News";
   }
 
   function escapeHtml(value) {

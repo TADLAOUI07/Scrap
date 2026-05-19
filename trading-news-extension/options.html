@@ -10,20 +10,35 @@
     <main class="settings">
       <header>
         <h1>Trading News Filter Settings</h1>
-        <p>Local settings only. No API key is required and no backend is used by default.</p>
+        <p>Local filtering works without AI. OpenAI analysis is optional and uses your own API key stored in Chrome local storage.</p>
       </header>
 
       <section class="panel">
         <h2>General</h2>
         <label class="row">
-          <span>Auto-refresh every 5 minutes</span>
+          <span>Auto-refresh visible X/Twitter page</span>
           <input id="autoRefreshEnabled" type="checkbox">
         </label>
         <p id="autoRefreshState" class="state-text">Auto-refresh: OFF</p>
 
         <label>
+          Refresh interval in minutes
+          <input id="autoRefreshMinutes" type="number" min="5" max="1440" step="1">
+        </label>
+
+        <label>
           Minimum score to display
           <input id="minimumScore" type="number" min="0" max="5" step="1">
+        </label>
+
+        <label>
+          Default News for PAIR / Market
+          <select id="selectedPair"></select>
+        </label>
+
+        <label>
+          Watched pairs / markets, comma-separated
+          <input id="watchedPairs" type="text">
         </label>
 
         <label>
@@ -35,9 +50,30 @@
           </select>
         </label>
 
+      </section>
+
+      <section class="panel">
+        <h2>OpenAI Analysis</h2>
+        <p class="state-text">For a personal extension, the key is saved in `chrome.storage.local`. Do not commit or hardcode API keys.</p>
+
         <label>
-          Future AI Backend URL
-          <input id="aiBackendUrl" type="url" placeholder="Disabled by default">
+          OpenAI API Key
+          <input id="openAiApiKey" type="password" placeholder="sk-...">
+        </label>
+
+        <label>
+          OpenAI model
+          <input id="openAiModel" type="text" placeholder="gpt-4.1-mini">
+        </label>
+
+        <label class="row">
+          <span>Auto-analyze after manual scan</span>
+          <input id="aiAutoAnalyze" type="checkbox">
+        </label>
+
+        <label>
+          Optional AI Backend URL
+          <input id="aiBackendUrl" type="url" placeholder="Optional local backend endpoint">
         </label>
       </section>
 
