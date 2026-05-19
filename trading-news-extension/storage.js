@@ -6,7 +6,7 @@
   const LAST_SCAN_KEY = "tnf_last_scan";
   const SESSION_BRIEF_KEY = "tnf_session_brief";
   const JOURNAL_KEY = "tnf_journal";
-  const DEFAULT_AI_ANALYSIS_PROMPT = [
+  const LEGACY_DEFAULT_AI_ANALYSIS_PROMPT = [
     "Analyze the supplied X/Twitter news like a professional macro trader.",
     "Focus on market-moving impact for the selected pair or market.",
     "Prioritize fresh macro drivers: central banks, inflation, jobs data, yields, DXY, geopolitics, oil, risk sentiment, crypto liquidity, earnings, and indices.",
@@ -14,6 +14,22 @@
     "Mention exactly which supplied news items support the bias.",
     "If the news is weak, noisy, or contradictory, return mixed or neutral with low confidence.",
     "Do not invent external facts. Do not give trade entries, stop losses, or financial advice."
+  ].join("\n");
+  const DEFAULT_AI_ANALYSIS_PROMPT = [
+    "Act as a senior institutional macro strategist and cross-asset trading desk analyst.",
+    "Analyze only the supplied X/Twitter news. Do not use or invent outside facts.",
+    "Think like a bank macro desk: identify the catalyst, transmission channel, asset sensitivity, market regime, and second-order effects.",
+    "Focus on market-moving impact for the selected pair or market, but also explain spillovers across FX, rates, yields, DXY, commodities, crypto, equities, and indices.",
+    "Prioritize central banks, inflation, jobs data, growth data, bond yields, DXY, geopolitics, oil/energy, risk sentiment, liquidity, earnings, and major policy headlines.",
+    "Classify the setup as bullish, bearish, mixed, neutral, or unclear for the selected market, with confidence level and clear reasoning.",
+    "Separate bullish and bearish forces in a balanced way. Highlight what would invalidate the current read.",
+    "Mention exactly which supplied news items support each conclusion. If a conclusion is not supported by the supplied tweets, say so.",
+    "Explain the likely market mechanism: why this headline can move price, what assets are most sensitive, and whether the impact is immediate, delayed, or uncertain.",
+    "Distinguish hard macro catalysts from noise, rumors, recycled headlines, and low-quality commentary.",
+    "If the news is weak, old, noisy, contradictory, or not directly relevant, return mixed or neutral with low confidence.",
+    "Use concise professional language suitable for a trader reading a bank desk note.",
+    "Do not provide trade entries, stop losses, take profits, position sizing, or financial advice.",
+    "Do not tell the user to buy or sell. Provide context, risk, scenarios, and uncertainty only."
   ].join("\n");
   const DEFAULT_AI_KEYWORDS = [
     "gold",
@@ -105,10 +121,15 @@
 
   async function getSettings() {
     const data = await getFromStorage([SETTINGS_KEY]);
+    const stored = data[SETTINGS_KEY] || {};
+    const aiAnalysisPrompt = !stored.aiAnalysisPrompt || stored.aiAnalysisPrompt === LEGACY_DEFAULT_AI_ANALYSIS_PROMPT
+      ? DEFAULT_AI_ANALYSIS_PROMPT
+      : stored.aiAnalysisPrompt;
     return {
       ...DEFAULT_SETTINGS,
-      ...(data[SETTINGS_KEY] || {}),
-      categories: mergeCategories(data[SETTINGS_KEY] && data[SETTINGS_KEY].categories)
+      ...stored,
+      aiAnalysisPrompt,
+      categories: mergeCategories(stored.categories)
     };
   }
 
@@ -264,6 +285,7 @@
     LAST_SCAN_KEY,
     SESSION_BRIEF_KEY,
     JOURNAL_KEY,
+    LEGACY_DEFAULT_AI_ANALYSIS_PROMPT,
     DEFAULT_AI_ANALYSIS_PROMPT,
     DEFAULT_AI_KEYWORDS,
     DEFAULT_SETTINGS,
