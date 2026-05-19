@@ -26,7 +26,7 @@
     }
 
     if (message.type === "TNF_SHOW_SIDEBAR") {
-      showSidebar(message.tweets || [], message.rawCount || 0);
+      showSidebar(message.tweets || [], message.rawCount || 0, message.sessionBrief || null);
       sendResponse({ ok: true });
       return false;
     }
@@ -190,12 +190,12 @@
     return link ? TNFUtils.normalizeText(link.textContent) : "Unknown";
   }
 
-  function showSidebar(tweets, rawCount) {
+  function showSidebar(tweets, rawCount, sessionBrief) {
     const existing = document.getElementById(SIDEBAR_ID);
     if (existing) existing.remove();
 
     const sortedTweets = [...tweets].sort((a, b) => (b.contextScoreValue || b.impactScore) - (a.contextScoreValue || a.impactScore));
-    const dashboard = buildSidebarDashboard(sortedTweets, rawCount);
+    const dashboard = buildSidebarDashboard(sortedTweets, rawCount, sessionBrief);
     const sidebar = document.createElement("aside");
     sidebar.id = SIDEBAR_ID;
     sidebar.innerHTML = `
@@ -407,8 +407,8 @@
     document.documentElement.appendChild(sidebar);
   }
 
-  function buildSidebarDashboard(tweets, rawCount) {
-    const today = buildTodayPanel(tweets, rawCount);
+  function buildSidebarDashboard(tweets, rawCount, sessionBrief) {
+    const today = buildTodayPanel(tweets, rawCount, sessionBrief);
     return {
       tabs: [
         { id: "today", label: "Today", html: today },
@@ -422,7 +422,7 @@
     };
   }
 
-  function buildTodayPanel(tweets, rawCount) {
+  function buildTodayPanel(tweets, rawCount, sessionBrief) {
     const averageScore = tweets.length
       ? Math.round(tweets.reduce((sum, tweet) => sum + Number(tweet.contextScoreValue || 0), 0) / tweets.length)
       : 0;
@@ -441,15 +441,36 @@
         <div class="tnf-stat"><span>${escapeHtml(riskTone)}</span><small>risk tone</small></div>
         <div class="tnf-stat"><span>${escapeHtml(mainTheme)}</span><small>main driver</small></div>
       </div>
-      <div class="tnf-card">
-        <div class="tnf-section-title">Session Brief</div>
-        <div class="tnf-text">Current context is ${escapeHtml(riskTone)} with ${escapeHtml(mainTheme)} as the dominant theme. Treat this as market context, not a trade signal.</div>
-        <div class="tnf-pill-row">
-          ${topAssets.length ? topAssets.map((asset) => `<span class="tnf-pill">${escapeHtml(asset)}</span>`).join("") : '<span class="tnf-pill">No assets detected</span>'}
-        </div>
-      </div>
+      ${renderSidebarBrief(sessionBrief, riskTone, mainTheme, topAssets)}
       <div class="tnf-section-title">Top Important Tweets</div>
       ${topTweetsHtml}
+    `;
+  }
+
+  function renderSidebarBrief(sessionBrief, riskTone, mainTheme, topAssets) {
+    if (!sessionBrief) {
+      return `
+        <div class="tnf-card">
+          <div class="tnf-section-title">Session Brief</div>
+          <div class="tnf-text">Current context is ${escapeHtml(riskTone)} with ${escapeHtml(mainTheme)} as the dominant theme. Treat this as market context, not a trade signal.</div>
+          <div class="tnf-pill-row">
+            ${topAssets.length ? topAssets.map((asset) => `<span class="tnf-pill">${escapeHtml(asset)}</span>`).join("") : '<span class="tnf-pill">No assets detected</span>'}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="tnf-card">
+        <div class="tnf-section-title">${escapeHtml(sessionBrief.session || "Unknown")} Session Brief</div>
+        <div class="tnf-pill-row">
+          <span class="tnf-pill ${escapeAttribute(sessionBrief.riskTone || "neutral")}">${escapeHtml(sessionBrief.riskTone || "neutral")}</span>
+          <span class="tnf-pill">Context ${escapeHtml(String(sessionBrief.averageContextScore || 0))}/100</span>
+          ${sessionBrief.fallback ? '<span class="tnf-pill">fallback</span>' : ""}
+        </div>
+        <div class="tnf-text">${escapeHtml(sessionBrief.sessionPlan || "")}</div>
+        <div class="tnf-meta">Key driver: ${escapeHtml(sessionBrief.keyDriver || "None")}</div>
+      </div>
     `;
   }
 

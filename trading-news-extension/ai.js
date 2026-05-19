@@ -54,6 +54,43 @@
     ].join("\n");
   }
 
+  function buildSessionBriefPrompt(tweets, settings) {
+    const compactTweets = tweets.slice(0, 20).map((tweet, index) => ({
+      index: index + 1,
+      tweetId: tweet.id,
+      text: tweet.text,
+      author: tweet.author,
+      time: tweet.time,
+      categories: tweet.categories,
+      impactScore: tweet.impactScore,
+      contextScore: tweet.contextScoreValue,
+      affectedAssets: tweet.affectedAssets,
+      macroTheme: tweet.macroTheme,
+      direction: tweet.direction
+    }));
+
+    return [
+      "You are an AI trading context assistant.",
+      "Prepare a pre-session brief from recent X/Twitter news captured by the user.",
+      "Do not provide buy or sell signals.",
+      "Do not predict the market with certainty.",
+      "Focus on macro context, event risk, affected assets, risk tone, and trading caution.",
+      "",
+      `User watchlist: ${(settings.watchedPairs || []).join(", ")}`,
+      `Trading style: ${settings.tradingProfile && settings.tradingProfile.style ? settings.tradingProfile.style : "intraday"}`,
+      `Trading session: ${settings.tradingProfile && settings.tradingProfile.mainSession ? settings.tradingProfile.mainSession : "Unknown"}`,
+      `Output language: ${settings.tradingProfile && settings.tradingProfile.outputLanguage ? settings.tradingProfile.outputLanguage : "en"}`,
+      "",
+      "Custom user analysis framework:",
+      settings.aiAnalysisPrompt || "",
+      "",
+      "Recent relevant tweets JSON:",
+      JSON.stringify(compactTweets, null, 2),
+      "",
+      "Return ONLY valid JSON matching the requested schema."
+    ].join("\n");
+  }
+
   async function analyzeWithOpenAI({ apiKey, model, pair, tweets, userPrompt }) {
     if (!apiKey) {
       throw new Error("OpenAI API key is missing. Add it in Options, or use a local backend URL.");
@@ -211,6 +248,78 @@
     return normalizeTweetAnalysis(JSON.parse(text), tweet);
   }
 
+  async function generateSessionBriefWithOpenAI(settings, tweets) {
+    if (!settings.openAiApiKey) {
+      throw new Error("OpenAI API key is missing.");
+    }
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${settings.openAiApiKey}`
+      },
+      body: JSON.stringify({
+        model: settings.openAiModel || "gpt-4.1-mini",
+        input: buildSessionBriefPrompt(tweets, settings),
+        text: {
+          format: {
+            type: "json_schema",
+            name: "session_brief",
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                session: { type: "string", enum: ["London", "New York", "Asia", "Unknown"] },
+                riskTone: { type: "string", enum: ["risk-on", "risk-off", "cautious", "neutral", "unclear"] },
+                keyDriver: { type: "string" },
+                assetsToWatch: { type: "array", items: { type: "string" } },
+                avoid: { type: "array", items: { type: "string" } },
+                topNews: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      tweetId: { type: "string" },
+                      summary: { type: "string" },
+                      affectedAssets: { type: "array", items: { type: "string" } },
+                      importance: { type: "string", enum: ["high", "medium", "low"] },
+                      whyItMatters: { type: "string" }
+                    },
+                    required: ["tweetId", "summary", "affectedAssets", "importance", "whyItMatters"]
+                  }
+                },
+                sessionPlan: { type: "string" },
+                averageContextScore: { type: "number" }
+              },
+              required: [
+                "session",
+                "riskTone",
+                "keyDriver",
+                "assetsToWatch",
+                "avoid",
+                "topNews",
+                "sessionPlan",
+                "averageContextScore"
+              ]
+            },
+            strict: true
+          }
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenAI request failed: ${response.status} ${errorText.slice(0, 180)}`);
+    }
+
+    const data = await response.json();
+    const text = extractOutputText(data);
+    return normalizeSessionBrief(JSON.parse(text), tweets, false);
+  }
+
   async function analyzeWithBackend({ backendUrl, pair, tweets }) {
     if (!backendUrl) {
       throw new Error("AI backend URL is missing.");
@@ -278,6 +387,90 @@
         error: error.message || "AI tweet analysis failed."
       };
     }
+  }
+
+  async function generateSessionBrief(settings, tweets) {
+    const relevantTweets = Array.isArray(tweets) ? tweets.slice(0, 20) : [];
+    if (relevantTweets.length === 0) {
+      throw new Error("No tweets available for session brief.");
+    }
+
+    try {
+      return await generateSessionBriefWithOpenAI(settings, relevantTweets);
+    } catch (error) {
+      return {
+        ...fallbackSessionBrief(relevantTweets, settings),
+        fallback: true,
+        error: error.message || "AI session brief failed."
+      };
+    }
+  }
+
+  function fallbackSessionBrief(tweets, settings) {
+    const averageContextScore = tweets.length
+      ? Math.round(tweets.reduce((sum, tweet) => sum + Number(tweet.contextScoreValue || 0), 0) / tweets.length)
+      : 0;
+    const assetsToWatch = topItems(tweets.flatMap((tweet) => tweet.affectedAssets || []), 5);
+    const themes = topItems(tweets.map((tweet) => tweet.macroTheme || (tweet.categories && tweet.categories[0]) || "Other"), 3);
+    const highRiskCount = tweets.filter((tweet) => tweet.contextRiskLevel === "high").length;
+    const riskTone = highRiskCount > 0 ? "cautious" : averageContextScore >= 65 ? "risk-on" : "neutral";
+    const topNews = [...tweets]
+      .sort((a, b) => Number(b.contextScoreValue || b.impactScore || 0) - Number(a.contextScoreValue || a.impactScore || 0))
+      .slice(0, 5)
+      .map((tweet) => ({
+        tweetId: tweet.id,
+        summary: tweet.summary || globalThis.TNFUtils.normalizeText(tweet.text).slice(0, 180),
+        affectedAssets: tweet.affectedAssets || [],
+        importance: tweet.contextScoreValue >= 70 || tweet.impactScore >= 5 ? "high" : tweet.contextScoreValue >= 40 || tweet.impactScore >= 3 ? "medium" : "low",
+        whyItMatters: tweet.reason || "Relevant local context from scanned news."
+      }));
+
+    return {
+      id: `brief_${Date.now()}`,
+      generatedAt: new Date().toISOString(),
+      session: settings.tradingProfile && settings.tradingProfile.mainSession ? settings.tradingProfile.mainSession : "Unknown",
+      riskTone,
+      keyDriver: themes[0] || "No dominant macro driver detected",
+      assetsToWatch,
+      avoid: [
+        "Do not treat headlines as direct buy/sell signals.",
+        "Avoid overtrading around unclear or contradictory news.",
+        "Wait for price action confirmation before making decisions."
+      ],
+      topNews,
+      sessionPlan: `Monitor ${assetsToWatch.join(", ") || "watched assets"} with attention to ${themes.join(", ") || "fresh headlines"}. Context only, no trade signal.`,
+      averageContextScore,
+      fallback: true
+    };
+  }
+
+  function normalizeSessionBrief(brief, tweets, fallback) {
+    return {
+      id: `brief_${Date.now()}`,
+      generatedAt: new Date().toISOString(),
+      session: brief.session || "Unknown",
+      riskTone: brief.riskTone || "unclear",
+      keyDriver: brief.keyDriver || "No dominant driver",
+      assetsToWatch: Array.isArray(brief.assetsToWatch) ? brief.assetsToWatch : [],
+      avoid: Array.isArray(brief.avoid) ? brief.avoid : [],
+      topNews: Array.isArray(brief.topNews) ? brief.topNews : [],
+      sessionPlan: brief.sessionPlan || "",
+      averageContextScore: Number.isFinite(Number(brief.averageContextScore))
+        ? Math.round(Number(brief.averageContextScore))
+        : fallbackSessionBrief(tweets, {}).averageContextScore,
+      fallback
+    };
+  }
+
+  function topItems(items, limit) {
+    const counts = items.filter(Boolean).reduce((acc, item) => {
+      acc[item] = (acc[item] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([item]) => item);
   }
 
   function fallbackTweetAnalysis(tweet, settings) {
@@ -377,7 +570,9 @@
   globalThis.TNFAI = {
     analyzeMarketNews,
     analyzeTweet,
+    generateSessionBrief,
     fallbackTweetAnalysis,
+    fallbackSessionBrief,
     filterTweetsForPair,
     getPairKeywords
   };

@@ -48,6 +48,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "TNF_GENERATE_SESSION_BRIEF") {
+    generateSessionBrief(message.payload || {}).then(sendResponse);
+    return true;
+  }
+
   if (message.type === "TNF_AUTO_SCAN_COMPLETE") {
     handleAutoScanComplete(message.payload).then(sendResponse);
     return true;
@@ -291,6 +296,26 @@ async function analyzeSingleTweet(payload) {
     analysis,
     analyzedAt: new Date().toISOString()
   };
+}
+
+async function generateSessionBrief(payload) {
+  const settings = await TNFStorage.getSettings();
+  const tweets = Array.isArray(payload.tweets) ? payload.tweets.slice(0, 20) : [];
+
+  if (tweets.length === 0) {
+    return { ok: false, error: "No tweets available for session brief. Run Scan Latest 10 Tweets first." };
+  }
+
+  try {
+    const brief = await TNFAI.generateSessionBrief(settings, tweets);
+    await TNFStorage.setSessionBrief(brief);
+    return { ok: true, brief };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message || "Session brief generation failed."
+    };
+  }
 }
 
 function wait(milliseconds) {

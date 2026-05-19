@@ -104,10 +104,10 @@ Implemented from that plan so far:
 - Sprint 2 Context Edge Score: relevant tweet cards show a 0-100 score with reasons, penalties, clarity, and risk level.
 - Sprint 3 AI Tweet Analysis: each tweet card has `Ask AI`, returning structured context, bias, risk tone, affected assets, why it matters, warning, and a local fallback if OpenAI fails.
 - Sprint 4 Sidebar Dashboard: the injected sidebar is now a tabbed cockpit with Today, Macro Desk, Assets, Calendar Risk, Journal, Coach, and Settings.
+- Sprint 5 Session Brief: popup can generate and store a session brief from recent tweets; OpenAI is used when available, otherwise a local fallback is shown.
 
 Not fully implemented yet:
 
-- Session Brief.
 - Macro Desk.
 - Instrument Bias.
 - Calendar Risk dashboard.

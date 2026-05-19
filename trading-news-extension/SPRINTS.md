@@ -363,6 +363,37 @@ Limites :
 - Macro Desk et Assets sont locaux, sans narrative IA dediee pour l'instant.
 - Le Session Brief IA complet reste au sprint suivant.
 
+## Sprint Cockpit 5 - AI Session Brief
+
+Objectif : creer un resume de session depuis les tweets recents, sans signal buy/sell.
+
+Livrables :
+
+- Bouton `Generate Session Brief` dans le popup.
+- Message background `TNF_GENERATE_SESSION_BRIEF`.
+- Fonction `generateSessionBrief()` dans `ai.js`.
+- Prompt Session Brief avec JSON stable.
+- Fallback local si OpenAI echoue ou si aucune cle n'est disponible.
+- Stockage local du brief dans `chrome.storage.local`.
+- Affichage dans le popup :
+  - session,
+  - risk tone,
+  - average context score,
+  - key driver,
+  - assets to watch,
+  - avoid,
+  - top news,
+  - session plan.
+- Affichage dans la sidebar `Today` quand un brief existe.
+
+Statut : fait.
+
+Limites :
+
+- Pas encore d'export Markdown dedie pour le Session Brief.
+- Pas encore d'option `Auto-generate after scan`.
+- La version locale fallback reste simple et basee sur context score, themes et assets detectes.
+
 Fichiers principaux :
 
 - `background.js`

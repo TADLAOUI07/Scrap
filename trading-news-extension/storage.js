@@ -4,6 +4,7 @@
   const SETTINGS_KEY = "tnf_settings";
   const HISTORY_KEY = "tnf_history";
   const LAST_SCAN_KEY = "tnf_last_scan";
+  const SESSION_BRIEF_KEY = "tnf_session_brief";
   const DEFAULT_AI_ANALYSIS_PROMPT = [
     "Analyze the supplied X/Twitter news like a professional macro trader.",
     "Focus on market-moving impact for the selected pair or market.",
@@ -155,6 +156,16 @@
     return scan;
   }
 
+  async function getSessionBrief() {
+    const data = await getFromStorage([SESSION_BRIEF_KEY]);
+    return data[SESSION_BRIEF_KEY] || null;
+  }
+
+  async function setSessionBrief(brief) {
+    await setInStorage({ [SESSION_BRIEF_KEY]: brief });
+    return brief;
+  }
+
   function deduplicateTweets(tweets) {
     return globalThis.TNFUtils.uniqueById(tweets);
   }
@@ -163,6 +174,7 @@
     SETTINGS_KEY,
     HISTORY_KEY,
     LAST_SCAN_KEY,
+    SESSION_BRIEF_KEY,
     DEFAULT_AI_ANALYSIS_PROMPT,
     DEFAULT_SETTINGS,
     getSettings,
@@ -175,6 +187,8 @@
     clearHistory,
     getLastScan,
     setLastScan,
+    getSessionBrief,
+    setSessionBrief,
     deduplicateTweets
   };
 })();

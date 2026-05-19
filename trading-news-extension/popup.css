@@ -153,6 +153,12 @@ button:disabled {
   gap: 10px;
 }
 
+.terminal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .toggle-row {
   display: flex;
   align-items: center;
@@ -178,14 +184,16 @@ input[type="checkbox"] {
   accent-color: var(--accent);
 }
 
-.ai-panel {
+.ai-panel,
+.brief-panel {
   padding: 10px;
   background: #0e141c;
   border: 1px solid var(--border);
   border-radius: 10px;
 }
 
-.ai-head {
+.ai-head,
+.brief-head {
   display: grid;
   gap: 6px;
 }

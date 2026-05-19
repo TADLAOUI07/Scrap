@@ -6,7 +6,8 @@
     rawTweets: [],
     history: [],
     filter: "all",
-    settings: null
+    settings: null,
+    sessionBrief: null
   };
 
   const els = {};
@@ -18,10 +19,12 @@
     bindEvents();
     state.settings = await TNFStorage.getSettings();
     state.history = await TNFStorage.getHistory();
+    state.sessionBrief = await TNFStorage.getSessionBrief();
     const lastScan = await TNFStorage.getLastScan();
     state.tweets = lastScan && Array.isArray(lastScan.tweets) ? lastScan.tweets : state.history;
     state.rawTweets = lastScan && Array.isArray(lastScan.rawTweets) ? lastScan.rawTweets : [];
     renderSettings();
+    renderSessionBrief();
     renderStats(lastScan);
     renderTweets();
     checkActivePage();
@@ -38,6 +41,8 @@
       "disableAutoRefresh",
       "pairSelect",
       "aiAnalyzeButton",
+      "sessionBriefButton",
+      "briefPanel",
       "aiPanel",
       "scannedCount",
       "relevantCount",
@@ -63,6 +68,7 @@
     els.refreshMinutes.addEventListener("change", savePopupSettings);
     els.pairSelect.addEventListener("change", savePopupSettings);
     els.aiAnalyzeButton.addEventListener("click", analyzeWithAi);
+    els.sessionBriefButton.addEventListener("click", generateSessionBrief);
     els.disableAutoRefresh.addEventListener("click", () => setAutoRefresh(false));
     els.exportJson.addEventListener("click", exportJson);
     els.exportCsv.addEventListener("click", exportCsv);
@@ -153,7 +159,8 @@
       await chrome.tabs.sendMessage(tab.id, {
         type: "TNF_SHOW_SIDEBAR",
         tweets: getFilteredTweets(),
-        rawCount: state.rawTweets.length
+        rawCount: state.rawTweets.length,
+        sessionBrief: state.sessionBrief
       });
       window.close();
     } catch (error) {
@@ -258,6 +265,30 @@
     }
   }
 
+  async function generateSessionBrief() {
+    const tweets = getAiInputTweets();
+    els.briefPanel.hidden = false;
+    els.briefPanel.innerHTML = '<div class="ai-loading">Generating session brief...</div>';
+    els.sessionBriefButton.disabled = true;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "TNF_GENERATE_SESSION_BRIEF",
+        payload: { tweets }
+      });
+
+      if (!response || !response.ok) {
+        els.briefPanel.innerHTML = `<div class="ai-error">${escapeHtml(response && response.error ? response.error : "Session brief failed.")}</div>`;
+        return;
+      }
+
+      state.sessionBrief = response.brief;
+      renderSessionBrief();
+    } finally {
+      els.sessionBriefButton.disabled = false;
+    }
+  }
+
   function getAiInputTweets(scanResponse) {
     const filtered = scanResponse && Array.isArray(scanResponse.tweets)
       ? scanResponse.tweets
@@ -311,6 +342,32 @@
     `;
   }
 
+  function renderSessionBrief() {
+    const brief = state.sessionBrief;
+    if (!brief) {
+      els.briefPanel.hidden = true;
+      els.briefPanel.innerHTML = "";
+      return;
+    }
+
+    els.briefPanel.hidden = false;
+    els.briefPanel.innerHTML = `
+      <div class="brief-head">
+        <span class="ai-bias ${escapeAttribute(String(brief.riskTone || "neutral").toLowerCase())}">${escapeHtml(brief.riskTone || "neutral")}</span>
+        <strong>${escapeHtml(brief.session || "Unknown")} Session Brief</strong>
+      </div>
+      <div class="ai-grid">
+        <div><small>Avg Context</small><span>${escapeHtml(String(brief.averageContextScore || 0))}/100</span></div>
+        <div><small>Key Driver</small><span>${escapeHtml(brief.keyDriver || "None")}</span></div>
+      </div>
+      ${renderList("Assets to watch", brief.assetsToWatch)}
+      ${renderList("Avoid", brief.avoid)}
+      ${renderBriefNews(brief.topNews)}
+      <p>${escapeHtml(brief.sessionPlan || "")}</p>
+      ${brief.fallback ? '<small class="ai-time">Local fallback brief</small>' : `<small class="ai-time">Generated ${escapeHtml(TNFUtils.formatDateTime(brief.generatedAt))}</small>`}
+    `;
+  }
+
   function renderList(title, items) {
     if (!Array.isArray(items) || items.length === 0) return "";
     return `
@@ -327,6 +384,16 @@
       <div class="ai-section">
         <strong>News that moved the read</strong>
         <ul>${items.map((item) => `<li>${escapeHtml(item.title || "")}: ${escapeHtml(item.impact || "")}</li>`).join("")}</ul>
+      </div>
+    `;
+  }
+
+  function renderBriefNews(items) {
+    if (!Array.isArray(items) || items.length === 0) return "";
+    return `
+      <div class="ai-section">
+        <strong>Top News</strong>
+        <ul>${items.map((item) => `<li>${escapeHtml(item.summary || "")}: ${escapeHtml(item.whyItMatters || "")}</li>`).join("")}</ul>
       </div>
     `;
   }

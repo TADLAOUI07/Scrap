@@ -41,7 +41,11 @@
           News for pair / market
           <select id="pairSelect"></select>
         </label>
-        <button id="aiAnalyzeButton" class="primary">Analyze with OpenAI</button>
+        <div class="terminal-actions">
+          <button id="aiAnalyzeButton" class="primary">Analyze with OpenAI</button>
+          <button id="sessionBriefButton" class="secondary">Generate Session Brief</button>
+        </div>
+        <div id="briefPanel" class="brief-panel" hidden></div>
         <div id="aiPanel" class="ai-panel" hidden></div>
       </section>
 
