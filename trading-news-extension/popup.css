@@ -448,6 +448,7 @@ input[type="checkbox"] {
 
 .tweet-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
 }
@@ -466,4 +467,17 @@ input[type="checkbox"] {
   text-decoration: none;
   font-size: 12px;
   font-weight: 700;
+}
+
+.tweet-ai {
+  margin-top: 9px;
+}
+
+.tweet-ai-box {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  background: #101722;
+  border: 1px solid #304054;
+  border-radius: 8px;
 }

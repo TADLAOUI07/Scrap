@@ -30,6 +30,30 @@
     ].join("\n");
   }
 
+  function buildTweetPrompt(tweet, settings) {
+    return [
+      "You are an AI trading news analyst.",
+      "Analyze this single X/Twitter news item for an active trader.",
+      "Do not provide direct buy or sell signals.",
+      "Do not predict with certainty.",
+      "Do not tell the user to enter a trade.",
+      "Focus only on context, risk, catalysts, affected assets, and caution.",
+      "",
+      `Tweet: ${tweet.text || ""}`,
+      `Author: ${tweet.author || "Unknown"}`,
+      `Time: ${tweet.time || tweet.timestamp || ""}`,
+      `User watchlist: ${(settings.watchedPairs || []).join(", ")}`,
+      `Trading style: ${settings.tradingProfile && settings.tradingProfile.style ? settings.tradingProfile.style : "intraday"}`,
+      `Main session: ${settings.tradingProfile && settings.tradingProfile.mainSession ? settings.tradingProfile.mainSession : "Unknown"}`,
+      `Output language: ${settings.tradingProfile && settings.tradingProfile.outputLanguage ? settings.tradingProfile.outputLanguage : "en"}`,
+      "",
+      "Custom user analysis framework:",
+      settings.aiAnalysisPrompt || "",
+      "",
+      "Return ONLY valid JSON matching the requested schema."
+    ].join("\n");
+  }
+
   async function analyzeWithOpenAI({ apiKey, model, pair, tweets, userPrompt }) {
     if (!apiKey) {
       throw new Error("OpenAI API key is missing. Add it in Options, or use a local backend URL.");
@@ -121,6 +145,72 @@
     return JSON.parse(text);
   }
 
+  async function analyzeTweetWithOpenAI(settings, tweet) {
+    if (!settings.openAiApiKey) {
+      throw new Error("OpenAI API key is missing.");
+    }
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${settings.openAiApiKey}`
+      },
+      body: JSON.stringify({
+        model: settings.openAiModel || "gpt-4.1-mini",
+        input: buildTweetPrompt(tweet, settings),
+        text: {
+          format: {
+            type: "json_schema",
+            name: "ai_tweet_analysis",
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                tweetId: { type: "string" },
+                isRelevant: { type: "boolean" },
+                importance: { type: "string", enum: ["high", "medium", "low", "ignore"] },
+                affectedAssets: { type: "array", items: { type: "string" } },
+                marketBias: { type: "string", enum: ["bullish", "bearish", "mixed", "neutral", "unclear"] },
+                riskTone: { type: "string", enum: ["risk-on", "risk-off", "cautious", "neutral", "unclear"] },
+                summary: { type: "string" },
+                whyItMatters: { type: "string" },
+                mainDriver: { type: "string" },
+                tradingWarning: { type: "string" },
+                clarity: { type: "string", enum: ["high", "medium", "low"] },
+                shouldNotify: { type: "boolean" }
+              },
+              required: [
+                "tweetId",
+                "isRelevant",
+                "importance",
+                "affectedAssets",
+                "marketBias",
+                "riskTone",
+                "summary",
+                "whyItMatters",
+                "mainDriver",
+                "tradingWarning",
+                "clarity",
+                "shouldNotify"
+              ]
+            },
+            strict: true
+          }
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenAI request failed: ${response.status} ${errorText.slice(0, 180)}`);
+    }
+
+    const data = await response.json();
+    const text = extractOutputText(data);
+    return normalizeTweetAnalysis(JSON.parse(text), tweet);
+  }
+
   async function analyzeWithBackend({ backendUrl, pair, tweets }) {
     if (!backendUrl) {
       throw new Error("AI backend URL is missing.");
@@ -178,6 +268,77 @@
     };
   }
 
+  async function analyzeTweet(settings, tweet) {
+    try {
+      return await analyzeTweetWithOpenAI(settings, tweet);
+    } catch (error) {
+      return {
+        ...fallbackTweetAnalysis(tweet, settings),
+        fallback: true,
+        error: error.message || "AI tweet analysis failed."
+      };
+    }
+  }
+
+  function fallbackTweetAnalysis(tweet, settings) {
+    const affectedAssets = globalThis.TNFCockpit
+      ? globalThis.TNFCockpit.detectAffectedAssets(tweet, settings)
+      : [];
+    const contextScore = tweet.contextScore && Number.isFinite(tweet.contextScore.score)
+      ? tweet.contextScore.score
+      : Number(tweet.contextScoreValue || 0);
+    const importance = contextScore >= 70 || tweet.impactScore >= 5
+      ? "high"
+      : contextScore >= 40 || tweet.impactScore >= 3
+        ? "medium"
+        : tweet.impactScore > 0
+          ? "low"
+          : "ignore";
+    const direction = tweet.direction === "bullish" || tweet.direction === "bearish"
+      ? tweet.direction
+      : "neutral";
+    return {
+      tweetId: tweet.id,
+      isRelevant: importance !== "ignore",
+      importance,
+      affectedAssets,
+      marketBias: direction,
+      riskTone: inferRiskTone(tweet),
+      summary: tweet.summary || globalThis.TNFUtils.normalizeText(tweet.text).slice(0, 180),
+      whyItMatters: tweet.reason || "Local fallback based on keyword relevance and context score.",
+      mainDriver: tweet.macroTheme || (tweet.categories && tweet.categories[0]) || "Unknown",
+      tradingWarning: "Local fallback only. Treat as context, not a trading signal.",
+      clarity: tweet.contextClarity || (contextScore >= 70 ? "high" : contextScore >= 40 ? "medium" : "low"),
+      shouldNotify: importance === "high"
+    };
+  }
+
+  function normalizeTweetAnalysis(analysis, tweet) {
+    return {
+      tweetId: analysis.tweetId || tweet.id,
+      isRelevant: Boolean(analysis.isRelevant),
+      importance: analysis.importance || "low",
+      affectedAssets: Array.isArray(analysis.affectedAssets) ? analysis.affectedAssets : [],
+      marketBias: analysis.marketBias || "unclear",
+      riskTone: analysis.riskTone || "unclear",
+      summary: analysis.summary || "",
+      whyItMatters: analysis.whyItMatters || "",
+      mainDriver: analysis.mainDriver || "",
+      tradingWarning: analysis.tradingWarning || "",
+      clarity: analysis.clarity || "low",
+      shouldNotify: Boolean(analysis.shouldNotify),
+      fallback: false
+    };
+  }
+
+  function inferRiskTone(tweet) {
+    const text = `${tweet.text || ""} ${(tweet.detectedKeywords || []).join(" ")}`.toLowerCase();
+    if (text.includes("risk off") || text.includes("war") || text.includes("escalation")) return "risk-off";
+    if (text.includes("risk on") || text.includes("rally") || text.includes("surge")) return "risk-on";
+    if (tweet.contextRiskLevel === "high") return "cautious";
+    return "neutral";
+  }
+
   function filterTweetsForPair(tweets, pair) {
     const keywords = getPairKeywords(pair);
     return tweets.filter((tweet) => {
@@ -215,6 +376,8 @@
 
   globalThis.TNFAI = {
     analyzeMarketNews,
+    analyzeTweet,
+    fallbackTweetAnalysis,
     filterTweetsForPair,
     getPairKeywords
   };

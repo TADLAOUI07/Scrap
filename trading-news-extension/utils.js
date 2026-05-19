@@ -39,6 +39,7 @@
       "contextClarity",
       "affectedAssets",
       "macroTheme",
+      "aiTweetAnalysis",
       "author",
       "time",
       "url",

@@ -279,6 +279,43 @@ Limites :
 - Le dashboard sidebar a onglets reste a faire.
 - Les modules Session Brief, Macro Desk, Instrument Bias, Journal, Coach et Daily Report restent a faire.
 
+## Sprint Cockpit 3 - AI Tweet Analysis
+
+Objectif : analyser un tweet individuellement avec un JSON stable et un fallback local.
+
+Livrables :
+
+- Bouton `Ask AI` sur chaque carte tweet.
+- Message background `TNF_ANALYZE_TWEET`.
+- Fonction `analyzeTweet()` dans `ai.js`.
+- Prompt par tweet sans signal buy/sell.
+- JSON stable :
+  - `isRelevant`,
+  - `importance`,
+  - `affectedAssets`,
+  - `marketBias`,
+  - `riskTone`,
+  - `summary`,
+  - `whyItMatters`,
+  - `mainDriver`,
+  - `tradingWarning`,
+  - `clarity`,
+  - `shouldNotify`.
+- Fallback local si :
+  - cle OpenAI absente,
+  - erreur reseau,
+  - erreur OpenAI,
+  - JSON invalide.
+- Affichage inline dans la carte tweet.
+- Persistance dans l'historique local et le dernier scan.
+
+Statut : fait.
+
+Limites :
+
+- L'analyse IA par tweet n'est pas encore visible dans la sidebar dashboard a onglets.
+- Pas encore de rate limit visuel avance par utilisateur.
+
 Fichiers principaux :
 
 - `background.js`

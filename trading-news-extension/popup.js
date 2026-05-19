@@ -169,6 +169,32 @@
     showMessage(result.saved ? "Tweet saved." : "Tweet already exists in history.");
   }
 
+  async function askAiForTweet(tweetId) {
+    const tweet = state.tweets.find((item) => item.id === tweetId);
+    if (!tweet) return;
+
+    setTweetAiState(tweetId, '<div class="ai-loading">Asking AI...</div>');
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "TNF_ANALYZE_TWEET",
+        payload: { tweet }
+      });
+
+      if (!response || !response.ok) {
+        setTweetAiState(tweetId, `<div class="ai-error">${escapeHtml(response && response.error ? response.error : "Tweet AI analysis failed.")}</div>`);
+        return;
+      }
+
+      tweet.aiTweetAnalysis = response.analysis;
+      tweet.aiAnalyzedAt = response.analyzedAt;
+      state.history = await TNFStorage.upsertTweets([tweet]);
+      await persistCurrentScanState();
+      renderTweets();
+    } catch (error) {
+      setTweetAiState(tweetId, '<div class="ai-error">Tweet AI analysis failed.</div>');
+    }
+  }
+
   async function clearHistory() {
     await TNFStorage.clearHistory();
     state.history = [];
@@ -194,6 +220,16 @@
 
   function exportRawCsv() {
     TNFUtils.downloadText(`trading-news-scan-${Date.now()}.csv`, TNFUtils.toCsv(state.rawTweets || []), "text/csv");
+  }
+
+  async function persistCurrentScanState() {
+    const lastScan = await TNFStorage.getLastScan();
+    if (!lastScan) return;
+    await TNFStorage.setLastScan({
+      ...lastScan,
+      tweets: state.tweets,
+      rawTweets: state.rawTweets
+    });
   }
 
   async function analyzeWithAi(sourceTweets) {
@@ -326,13 +362,22 @@
         <div class="tweet-buttons">
           ${tweet.url ? `<a href="${escapeAttribute(tweet.url)}" target="_blank" rel="noreferrer">Open Tweet</a>` : ""}
           <button type="button" data-save="${escapeAttribute(tweet.id)}">Save</button>
+          <button type="button" data-ask-ai="${escapeAttribute(tweet.id)}">Ask AI</button>
         </div>
+        <div class="tweet-ai" data-ai-result="${escapeAttribute(tweet.id)}">${renderTweetAiAnalysis(tweet)}</div>
       `;
       card.querySelector(".tweet-text").textContent = tweet.text;
       const saveButton = card.querySelector("[data-save]");
       if (saveButton) saveButton.addEventListener("click", () => saveTweet(tweet.id));
+      const askAiButton = card.querySelector("[data-ask-ai]");
+      if (askAiButton) askAiButton.addEventListener("click", () => askAiForTweet(tweet.id));
       els.tweetList.appendChild(card);
     });
+  }
+
+  function setTweetAiState(tweetId, html) {
+    const target = document.querySelector(`[data-ai-result="${cssEscape(tweetId)}"]`);
+    if (target) target.innerHTML = html;
   }
 
   function getFilteredTweets() {
@@ -367,6 +412,26 @@
         ${tweet.macroTheme ? `<div class="tweet-reason">Macro theme: ${escapeHtml(tweet.macroTheme)}</div>` : ""}
         ${reasons.length ? `<div class="tweet-reason">Context reasons: ${escapeHtml(reasons.join(" | "))}</div>` : ""}
         ${penalties.length ? `<div class="tweet-reason">Penalties: ${escapeHtml(penalties.join(" | "))}</div>` : ""}
+      </div>
+    `;
+  }
+
+  function renderTweetAiAnalysis(tweet) {
+    const analysis = tweet.aiTweetAnalysis;
+    if (!analysis) return "";
+    return `
+      <div class="tweet-ai-box">
+        <div class="context-line">
+          <span class="ai-bias ${escapeAttribute(String(analysis.marketBias || "unclear").toLowerCase())}">${escapeHtml(analysis.marketBias || "unclear")}</span>
+          <span class="risk-pill">${escapeHtml(analysis.importance || "low")} importance</span>
+          <span class="risk-pill">${escapeHtml(analysis.riskTone || "unclear")}</span>
+          ${analysis.fallback ? '<span class="risk-pill">fallback</span>' : ""}
+        </div>
+        <div class="tweet-reason">AI summary: ${escapeHtml(analysis.summary || "")}</div>
+        <div class="tweet-reason">Why it matters: ${escapeHtml(analysis.whyItMatters || "")}</div>
+        <div class="tweet-reason">Main driver: ${escapeHtml(analysis.mainDriver || "")}</div>
+        <div class="tweet-reason">Warning: ${escapeHtml(analysis.tradingWarning || "")}</div>
+        ${analysis.affectedAssets && analysis.affectedAssets.length ? `<div class="tweet-reason">AI assets: ${escapeHtml(analysis.affectedAssets.join(", "))}</div>` : ""}
       </div>
     `;
   }
@@ -411,5 +476,10 @@
 
   function escapeAttribute(value) {
     return escapeHtml(value).replace(/'/g, "&#39;");
+  }
+
+  function cssEscape(value) {
+    if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(value);
+    return String(value).replace(/"/g, '\\"');
   }
 })();

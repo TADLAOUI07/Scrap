@@ -127,6 +127,19 @@
     };
   }
 
+  async function upsertTweets(tweets) {
+    const history = await getHistory();
+    const byId = new Map(history.map((item) => [item.id, item]));
+    tweets.forEach((tweet) => {
+      if (!tweet || !tweet.id) return;
+      byId.set(tweet.id, {
+        ...(byId.get(tweet.id) || {}),
+        ...tweet
+      });
+    });
+    return setHistory(Array.from(byId.values()));
+  }
+
   async function clearHistory() {
     await setInStorage({ [HISTORY_KEY]: [] });
     return [];
@@ -158,6 +171,7 @@
     setHistory,
     saveTweet,
     saveTweets,
+    upsertTweets,
     clearHistory,
     getLastScan,
     setLastScan,

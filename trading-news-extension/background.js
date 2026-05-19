@@ -43,6 +43,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "TNF_ANALYZE_TWEET") {
+    analyzeSingleTweet(message.payload || {}).then(sendResponse);
+    return true;
+  }
+
   if (message.type === "TNF_AUTO_SCAN_COMPLETE") {
     handleAutoScanComplete(message.payload).then(sendResponse);
     return true;
@@ -270,6 +275,22 @@ async function analyzeMarketNews(payload) {
       error: error.message || "OpenAI analysis failed. Check your API key and connection."
     };
   }
+}
+
+async function analyzeSingleTweet(payload) {
+  const settings = await TNFStorage.getSettings();
+  const tweet = payload.tweet;
+
+  if (!tweet || !tweet.id || !tweet.text) {
+    return { ok: false, error: "No tweet selected for AI analysis." };
+  }
+
+  const analysis = await TNFAI.analyzeTweet(settings, tweet);
+  return {
+    ok: true,
+    analysis,
+    analyzedAt: new Date().toISOString()
+  };
 }
 
 function wait(milliseconds) {
