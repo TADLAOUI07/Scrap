@@ -720,19 +720,21 @@ Ces elements sont dans la roadmap future, pas dans le MVP actuel :
 
 ## Sprint 15 - Reliable Sidebar Target
 
-Objectif : rendre `Show Sidebar` fiable meme quand le content script n'est pas encore actif dans l'onglet X/Twitter, et permettre une sidebar automatique sur une URL cible.
+Objectif : rendre `Show Sidebar` fiable meme quand le content script n'est pas encore actif dans l'onglet cible, et permettre une sidebar automatique sur une URL X/Twitter ou TradingView.
 
 Livrables :
 
 - Nouveau message background `TNF_SHOW_SIDEBAR_ON_TAB`.
 - Retry automatique avec injection de `utils.js`, `scoring.js`, `cockpit.js`, `storage.js`, `content.js` si l'onglet X/Twitter ne repond pas.
-- `Show Sidebar` peut utiliser l'onglet X/Twitter actif, l'onglet surveille, ou une URL cible configuree.
+- `Show Sidebar` peut utiliser l'onglet X/Twitter actif, l'onglet TradingView actif, l'onglet surveille, ou une URL cible configuree.
 - Nouveaux settings :
   - `autoShowSidebarEnabled`,
   - `sidebarTargetUrl`.
-- Nouvelle option dans `options.html` pour coller l'URL cible X/Twitter.
+- Nouvelle option dans `options.html` pour coller l'URL cible X/Twitter ou TradingView.
+- Permission hote ajoutee pour `https://*.tradingview.com/*` afin d'injecter uniquement la sidebar sur le graphique cible.
 - La sidebar automatique n'ouvre jamais de nouvel onglet.
 - La sidebar automatique s'affiche seulement quand l'utilisateur charge ou recharge l'URL cible.
+- Le scan des tweets reste limite a X/Twitter.
 - Les donnees affichees viennent du dernier scan synchronise ou de l'historique local.
 
 Statut : fait.

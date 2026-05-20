@@ -193,7 +193,7 @@
 
   async function showSidebar() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const activeTwitterTabId = tab && tab.id && TNFUtils.isTwitterUrl(tab.url) ? tab.id : null;
+    const activeSidebarTabId = tab && tab.id && isSidebarTargetUrl(tab.url) ? tab.id : null;
     const sidebarTweets = getSidebarTweets();
     if (!sidebarTweets.length) {
       showMessage("No synchronized scan data yet. Run Scan Latest 10 Tweets once, then open the sidebar.");
@@ -201,15 +201,14 @@
     }
 
     try {
-      const assetBiases = await getAssetBiasesForSidebar(sidebarTweets);
       const response = await chrome.runtime.sendMessage({
         type: "TNF_SHOW_SIDEBAR_ON_TAB",
         payload: {
-          targetTabId: activeTwitterTabId,
+          targetTabId: activeSidebarTabId,
           tweets: sidebarTweets,
           rawCount: state.rawTweets.length || sidebarTweets.length,
           sessionBrief: state.sessionBrief,
-          assetBiases
+          assetBiases: null
         }
       });
       if (!response || !response.ok) {
@@ -218,7 +217,7 @@
       }
       window.close();
     } catch (error) {
-      showMessage("Could not show sidebar. Reload the target X/Twitter tab and try again.");
+      showMessage("Could not show sidebar. Reload the target tab and try again.");
     }
   }
 
@@ -243,6 +242,16 @@
       // Sidebar will fall back to local reasons if AI asset analysis is unavailable.
     }
     return null;
+  }
+
+  function isSidebarTargetUrl(value) {
+    try {
+      const url = new URL(value);
+      const host = url.hostname.replace(/^www\./, "").toLowerCase();
+      return TNFUtils.isTwitterUrl(url.href) || host === "tradingview.com" || host.endsWith(".tradingview.com");
+    } catch (error) {
+      return false;
+    }
   }
 
   async function saveTweet(tweetId) {

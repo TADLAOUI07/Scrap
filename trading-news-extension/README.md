@@ -22,7 +22,7 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 - Context Edge Score from 0 to 100 for each relevant tweet, with reasons, penalties, clarity, risk level, affected assets, and macro theme.
 - Popup filters: All, High Impact, XAUUSD, USD, Fed, Inflation, Geopolitics.
 - Floating sidebar on X/Twitter via `Show Sidebar`, focused on Assets, Today, and Macro Desk.
-- Optional auto-show sidebar on a configured target X/Twitter URL, using the latest synchronized scan data.
+- Optional auto-show sidebar on a configured X/Twitter or TradingView URL, using the latest synchronized scan data.
 - Local history with deduplication by tweet URL or text hash.
 - CSV export for filtered news and raw scan results.
 - Options page for keywords, categories, minimum score, theme, auto-refresh, import/export settings, and future AI Backend URL.
@@ -48,18 +48,18 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 
 ## Sidebar Target Mode
 
-If `Show Sidebar` sometimes cannot find the injected page script, the background service worker now retries by injecting the extension scripts into the target X/Twitter tab before opening the sidebar.
+If `Show Sidebar` sometimes cannot find the injected page script, the background service worker now retries by injecting the extension scripts into the target tab before opening the sidebar.
 
-You can also auto-display the sidebar on a specific page:
+You can also auto-display the sidebar on a specific page, including a TradingView chart:
 
 1. Open the extension options page.
-2. Enable `Auto-show sidebar on target X/Twitter page`.
-3. Paste the target URL, for example `https://x.com/some_account`.
+2. Enable `Auto-show sidebar on target page`.
+3. Paste the target URL, for example `https://x.com/some_account` or `https://fr.tradingview.com/chart/...`.
 4. Click `Save Settings`.
 5. Run `Scan Latest 10 Tweets` once to create synchronized data.
-6. Open or reload the target X/Twitter tab.
+6. Open or reload the target X/Twitter or TradingView tab.
 
-The extension will not open a new tab automatically. It only shows the sidebar when the matching X/Twitter page is already loaded by you.
+The extension will not open a new tab automatically. It only shows the sidebar when the matching target page is already loaded by you. Tweet scanning still runs only on X/Twitter pages.
 
 ## Auto-Refresh
 
@@ -102,7 +102,7 @@ You can configure:
 - Category enabled/disabled state.
 - Minimum impact score to display.
 - Auto-refresh interval.
-- Auto-show sidebar on a target X/Twitter URL.
+- Auto-show sidebar on a target X/Twitter or TradingView URL.
 - Watched pairs/markets.
 - Default `News for PAIR` market.
 - Theme: system, light, or dark.

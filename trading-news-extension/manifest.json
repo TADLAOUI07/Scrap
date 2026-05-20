@@ -13,6 +13,7 @@
   "host_permissions": [
     "https://x.com/*",
     "https://twitter.com/*",
+    "https://*.tradingview.com/*",
     "https://api.openai.com/*",
     "http://localhost/*",
     "https://localhost/*",

@@ -3,6 +3,11 @@ importScripts("utils.js", "scoring.js", "cockpit.js", "storage.js", "ai.js");
 const AUTO_REFRESH_ALARM = "tnf_auto_refresh";
 const MIN_REFRESH_MINUTES = 1;
 const CONTENT_SCRIPT_FILES = ["utils.js", "scoring.js", "cockpit.js", "storage.js", "content.js"];
+const SIDEBAR_TARGET_PATTERNS = [
+  "https://x.com/*",
+  "https://twitter.com/*",
+  "https://*.tradingview.com/*"
+];
 
 chrome.runtime.onInstalled.addListener(async () => {
   const settings = await TNFStorage.getSettings();
@@ -119,9 +124,11 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status !== "complete" || !TNFUtils.isTwitterUrl(tab.url || "")) return;
+  if (changeInfo.status !== "complete") return;
 
   await maybeAutoShowSidebar(tabId, tab);
+
+  if (!TNFUtils.isTwitterUrl(tab.url || "")) return;
 
   const data = await chrome.storage.local.get(["tnf_pending_auto_scan"]);
   const pending = data.tnf_pending_auto_scan;
@@ -237,10 +244,10 @@ async function scanActiveTab() {
 
 async function showSidebarOnTargetTab(payload) {
   const targetTab = await findSidebarTargetTab(payload.targetTabId);
-  if (!targetTab || !targetTab.id || !TNFUtils.isTwitterUrl(targetTab.url || "")) {
+  if (!targetTab || !targetTab.id || !isSidebarAllowedUrl(targetTab.url || "")) {
     return {
       ok: false,
-      error: "No X/Twitter target tab found. Open or watch the target page first."
+      error: "No supported sidebar target tab found. Open the configured X/Twitter or TradingView page first."
     };
   }
 
@@ -278,6 +285,7 @@ async function showSidebarOnTargetTab(payload) {
 
 async function maybeAutoShowSidebar(tabId, tab) {
   try {
+    if (!isSidebarAllowedUrl(tab.url || "")) return;
     const settings = await TNFStorage.getSettings();
     if (!settings.autoShowSidebarEnabled || !settings.sidebarTargetUrl) return;
     if (!urlMatchesSidebarTarget(tab.url || "", settings.sidebarTargetUrl)) return;
@@ -331,7 +339,7 @@ async function sendSidebarMessage(tabId, payload) {
     } catch (injectionError) {
       return {
         ok: false,
-        error: "Could not show the sidebar on this X/Twitter tab. Reload the tab once, then try again."
+        error: "Could not show the sidebar on this target tab. Reload the tab once, then try again."
       };
     }
   }
@@ -397,7 +405,7 @@ async function findSidebarTargetTab(preferredTabId) {
   if (preferredTabId) {
     try {
       const preferred = await chrome.tabs.get(preferredTabId);
-      if (preferred && TNFUtils.isTwitterUrl(preferred.url || "")) return preferred;
+      if (preferred && isSidebarAllowedUrl(preferred.url || "")) return preferred;
     } catch (error) {
       // Continue with saved target lookup below.
     }
@@ -405,7 +413,7 @@ async function findSidebarTargetTab(preferredTabId) {
 
   const settings = await TNFStorage.getSettings();
   if (settings.sidebarTargetUrl) {
-    const matchingTabs = await chrome.tabs.query({ url: ["https://x.com/*", "https://twitter.com/*"] });
+    const matchingTabs = await chrome.tabs.query({ url: SIDEBAR_TARGET_PATTERNS });
     const matched = matchingTabs.find((tab) => urlMatchesSidebarTarget(tab.url || "", settings.sidebarTargetUrl));
     if (matched) return matched;
   }
@@ -416,8 +424,8 @@ async function findSidebarTargetTab(preferredTabId) {
   const activeTab = await findActiveTwitterTab();
   if (activeTab) return activeTab;
 
-  const twitterTabs = await chrome.tabs.query({ url: ["https://x.com/*", "https://twitter.com/*"] });
-  return twitterTabs.find((tab) => tab && tab.id && TNFUtils.isTwitterUrl(tab.url || "")) || null;
+  const targetTabs = await chrome.tabs.query({ url: SIDEBAR_TARGET_PATTERNS });
+  return targetTabs.find((tab) => tab && tab.id && isSidebarAllowedUrl(tab.url || "")) || null;
 }
 
 function urlMatchesSidebarTarget(currentUrl, targetUrl) {
@@ -430,12 +438,27 @@ function urlMatchesSidebarTarget(currentUrl, targetUrl) {
 function normalizeUrlForMatch(value) {
   try {
     const url = new URL(value);
-    if (!TNFUtils.isTwitterUrl(url.href)) return "";
-    const host = url.hostname.replace(/^www\./, "").replace(/^twitter\.com$/, "x.com");
+    if (!isSidebarAllowedUrl(url.href)) return "";
+    const isTwitter = TNFUtils.isTwitterUrl(url.href);
+    let host = url.hostname
+      .replace(/^www\./, "")
+      .replace(/^twitter\.com$/, "x.com");
+    if (host.endsWith(".tradingview.com")) host = "tradingview.com";
     const path = url.pathname.replace(/\/+$/, "");
-    return `${host}${path || "/"}`.toLowerCase();
+    const search = isTwitter ? "" : url.search;
+    return `${host}${path || "/"}${search}`.toLowerCase();
   } catch (error) {
     return "";
+  }
+}
+
+function isSidebarAllowedUrl(value) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, "").toLowerCase();
+    return TNFUtils.isTwitterUrl(url.href) || host === "tradingview.com" || host.endsWith(".tradingview.com");
+  } catch (error) {
+    return false;
   }
 }
 
