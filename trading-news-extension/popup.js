@@ -208,7 +208,8 @@
           tweets: sidebarTweets,
           rawCount: state.rawTweets.length || sidebarTweets.length,
           sessionBrief: state.sessionBrief,
-          assetBiases: null
+          assetBiases: null,
+          scannedAt: getLastScanTime()
         }
       });
       if (!response || !response.ok) {
@@ -226,6 +227,15 @@
     if (filtered.length) return filtered;
     if (state.tweets.length) return state.tweets;
     return state.history;
+  }
+
+  function getLastScanTime() {
+    const newestTweetTime = [...state.rawTweets, ...state.tweets]
+      .map((tweet) => tweet && (tweet.scannedAt || tweet.createdAt))
+      .filter(Boolean)
+      .sort()
+      .pop();
+    return newestTweetTime || new Date().toISOString();
   }
 
   async function getAssetBiasesForSidebar(sourceTweets) {

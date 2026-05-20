@@ -27,7 +27,14 @@
     }
 
     if (message.type === "TNF_SHOW_SIDEBAR") {
-      showSidebar(message.tweets || [], message.rawCount || 0, message.sessionBrief || null, message.assetBiases || null, message.settings || null).then(sendResponse);
+      showSidebar(
+        message.tweets || [],
+        message.rawCount || 0,
+        message.sessionBrief || null,
+        message.assetBiases || null,
+        message.settings || null,
+        message.scannedAt || ""
+      ).then(sendResponse);
       return true;
     }
 
@@ -190,7 +197,7 @@
     return link ? TNFUtils.normalizeText(link.textContent) : "Unknown";
   }
 
-  async function showSidebar(tweets, rawCount, sessionBrief, assetBiases, suppliedSettings) {
+  async function showSidebar(tweets, rawCount, sessionBrief, assetBiases, suppliedSettings, scannedAt) {
     const existing = document.getElementById(SIDEBAR_ID);
     if (existing) existing.remove();
     const existingStyle = document.getElementById(SIDEBAR_STYLE_ID);
@@ -199,7 +206,8 @@
     const settings = suppliedSettings || await TNFStorage.getSettings();
     const sidebarLayout = getSidebarLayout(settings);
     const sortedTweets = [...tweets].sort((a, b) => (b.contextScoreValue || b.impactScore) - (a.contextScoreValue || a.impactScore));
-    const dashboard = buildSidebarDashboard(sortedTweets, rawCount, sessionBrief, assetBiases);
+    const lastScanLabel = formatSidebarDate(scannedAt || getLatestTweetTimestamp(sortedTweets));
+    const dashboard = buildSidebarDashboard(sortedTweets, rawCount, sessionBrief, assetBiases, lastScanLabel);
     const sidebar = document.createElement("aside");
     const activeTabId = dashboard.tabs[0] ? dashboard.tabs[0].id : "assets";
     sidebar.id = SIDEBAR_ID;
@@ -208,7 +216,7 @@
       <div class="tnf-sidebar-head">
         <div>
           <strong>AI Trading Context Cockpit</strong>
-          <small>${escapeHtml(String(tweets.length))} shown / ${escapeHtml(String(rawCount || tweets.length))} scanned</small>
+          <small>${escapeHtml(String(tweets.length))} shown / ${escapeHtml(String(rawCount || tweets.length))} scanned · Last scan ${escapeHtml(lastScanLabel)}</small>
         </div>
         <button type="button" class="tnf-close" aria-label="Close">x</button>
       </div>
@@ -337,6 +345,23 @@
         margin-top: 3px;
         color: #9facbd;
         font-size: 11px;
+      }
+      #${SIDEBAR_ID} .tnf-freshness {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 0 0 12px;
+        padding: 10px 12px;
+        background: #111923;
+        border: 1px solid #2b3746;
+        border-radius: 10px;
+        color: #cbd6e2;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      #${SIDEBAR_ID} .tnf-freshness span {
+        color: #f4d35e;
       }
       #${SIDEBAR_ID} .tnf-section-title {
         margin: 14px 0 10px;
@@ -633,18 +658,18 @@
     return Math.min(max, Math.max(min, number));
   }
 
-  function buildSidebarDashboard(tweets, rawCount, sessionBrief, assetBiases) {
-    const today = buildTodayPanel(tweets, rawCount, sessionBrief);
+  function buildSidebarDashboard(tweets, rawCount, sessionBrief, assetBiases, lastScanLabel) {
+    const today = buildTodayPanel(tweets, rawCount, sessionBrief, lastScanLabel);
     return {
       tabs: [
-        { id: "assets", label: "Assets", html: buildAssetsPanel(tweets, assetBiases) },
+        { id: "assets", label: "Assets", html: buildAssetsPanel(tweets, assetBiases, lastScanLabel) },
         { id: "today", label: "Today", html: today },
         { id: "macro", label: "Macro Desk", html: buildMacroPanel(tweets) }
       ]
     };
   }
 
-  function buildTodayPanel(tweets, rawCount, sessionBrief) {
+  function buildTodayPanel(tweets, rawCount, sessionBrief, lastScanLabel) {
     const averageScore = tweets.length
       ? Math.round(tweets.reduce((sum, tweet) => sum + Number(tweet.contextScoreValue || 0), 0) / tweets.length)
       : 0;
@@ -657,6 +682,7 @@
       : '<div class="tnf-empty">No relevant trading news yet. Run Scan Latest 10 Tweets from the popup.</div>';
 
     return `
+      ${renderFreshnessBadge(lastScanLabel)}
       <div class="tnf-grid">
         <div class="tnf-stat"><span>${escapeHtml(String(rawCount || tweets.length))}</span><small>tweets scanned</small></div>
         <div class="tnf-stat"><span>${escapeHtml(String(averageScore))}/100</span><small>average context</small></div>
@@ -714,12 +740,12 @@
     }).join("");
   }
 
-  function buildAssetsPanel(tweets, assetBiases) {
+  function buildAssetsPanel(tweets, assetBiases, lastScanLabel) {
     const groups = groupBy(tweets.flatMap((tweet) => (tweet.affectedAssets || []).map((asset) => ({ asset, tweet }))), (item) => item.asset);
     const assets = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
     if (assets.length === 0) return '<div class="tnf-empty">No watched assets detected in filtered tweets.</div>';
     const aiBySymbol = getAssetBiasMap(assetBiases);
-    return assets.map(([asset, items]) => {
+    return `${renderFreshnessBadge(lastScanLabel)}${assets.map(([asset, items]) => {
       const assetTweets = items.map((item) => item.tweet);
       const avg = Math.round(assetTweets.reduce((sum, tweet) => sum + Number(tweet.contextScoreValue || 0), 0) / assetTweets.length);
       const aiBias = aiBySymbol.get(String(asset).toUpperCase());
@@ -749,7 +775,31 @@
           </div>
         </div>
       `;
-    }).join("");
+    }).join("")}`;
+  }
+
+  function renderFreshnessBadge(lastScanLabel) {
+    return `
+      <div class="tnf-freshness">
+        <strong>Data shown from last scan</strong>
+        <span>${escapeHtml(lastScanLabel)}</span>
+      </div>
+    `;
+  }
+
+  function getLatestTweetTimestamp(tweets) {
+    return (Array.isArray(tweets) ? tweets : [])
+      .map((tweet) => tweet && (tweet.scannedAt || tweet.createdAt || tweet.time))
+      .filter(Boolean)
+      .sort()
+      .pop() || "";
+  }
+
+  function formatSidebarDate(value) {
+    if (!value) return "unknown";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleString();
   }
 
   function getAssetBiasMap(assetBiases) {

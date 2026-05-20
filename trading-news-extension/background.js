@@ -269,6 +269,7 @@ async function showSidebarOnTargetTab(payload) {
     rawCount: Number(payload.rawCount || storedPayload.rawCount || tweets.length),
     sessionBrief: payload.sessionBrief || storedPayload.sessionBrief || null,
     assetBiases: payload.assetBiases || storedPayload.assetBiases || null,
+    scannedAt: payload.scannedAt || storedPayload.scannedAt || "",
     settings
   });
 
@@ -301,6 +302,7 @@ async function maybeAutoShowSidebar(tabId, tab) {
       rawCount: payload.rawCount,
       sessionBrief: payload.sessionBrief,
       assetBiases: payload.assetBiases,
+      scannedAt: payload.scannedAt,
       settings
     });
   } catch (error) {
@@ -323,7 +325,8 @@ async function buildStoredSidebarPayload() {
     tweets,
     rawCount,
     sessionBrief,
-    assetBiases
+    assetBiases,
+    scannedAt: lastScan && lastScan.scannedAt ? lastScan.scannedAt : ""
   };
 }
 
@@ -439,6 +442,7 @@ async function syncSidebarTargetsWithLatestScan(scan, sessionBrief, assetBiases,
       rawCount: Array.isArray(scan.rawTweets) ? scan.rawTweets.length : Number(scan.scannedCount || tweets.length),
       sessionBrief,
       assetBiases,
+      scannedAt: scan.scannedAt || new Date().toISOString(),
       settings
     });
     if (response.ok) syncedCount += 1;
