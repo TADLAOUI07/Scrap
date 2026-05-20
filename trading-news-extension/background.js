@@ -150,13 +150,13 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
           target: { tabId },
           files: CONTENT_SCRIPT_FILES
         });
-        await wait(700);
+        await wait(250);
         await chrome.tabs.sendMessage(tabId, { type: "TNF_AUTO_SCAN_AFTER_REFRESH" });
       } catch (injectionError) {
         // The next manual scan remains available if X delayed or blocked content script execution.
       }
     }
-  }, 3500);
+  }, 1200);
 });
 
 async function handleAutoRefreshToggle(enabled, minutes) {
@@ -235,7 +235,7 @@ async function scanActiveTab() {
         target: { tabId: activeTab.id },
         files: CONTENT_SCRIPT_FILES
       });
-      await wait(500);
+      await wait(250);
       const response = await chrome.tabs.sendMessage(activeTab.id, { type: "TNF_MANUAL_SCAN" });
       return response || { ok: false, error: "No response from the page after script injection." };
     } catch (injectionError) {
@@ -268,15 +268,17 @@ async function scanWatchedTwitterTab() {
     return scan || { ok: false, error: "Watched tab scan failed." };
   }
 
+  const initialSync = await syncSidebarWithStoredContext(scan);
   const syncResult = await analyzeAndSyncSidebarAfterAutoScan(scan);
+  const finalSync = syncResult.syncedCount > 0 ? syncResult : initialSync;
   await TNFStorage.saveSettings({
     lastRefreshStatus: [
       `Manual sidebar scan complete. ${scan.scannedCount || 0} tweets checked, ${scan.savedCount || 0} new relevant tweets added.`,
-      syncResult.syncedCount > 0 ? `Sidebar synced on ${syncResult.syncedCount} target tab(s).` : syncResult.reason
+      finalSync.syncedCount > 0 ? `Sidebar synced on ${finalSync.syncedCount} target tab(s).` : finalSync.reason
     ].filter(Boolean).join(" ")
   });
 
-  return { ok: true, scan, ...syncResult };
+  return { ok: true, scan, ...finalSync };
 }
 
 async function sendScanMessageToTab(tabId) {
@@ -289,7 +291,7 @@ async function sendScanMessageToTab(tabId) {
         target: { tabId },
         files: CONTENT_SCRIPT_FILES
       });
-      await wait(700);
+      await wait(250);
       const response = await chrome.tabs.sendMessage(tabId, { type: "TNF_MANUAL_SCAN" });
       return response || { ok: false, error: "No response from the watched X/Twitter tab after script injection." };
     } catch (injectionError) {
@@ -358,7 +360,7 @@ async function maybeAutoShowSidebar(tabId, tab) {
     const payload = await buildStoredSidebarPayload();
     if (!payload.tweets.length) return;
 
-    await wait(1200);
+    await wait(150);
     await sendSidebarMessage(tabId, {
       type: "TNF_SHOW_SIDEBAR",
       tweets: payload.tweets,
@@ -406,7 +408,7 @@ async function sendSidebarMessage(tabId, payload) {
         target: { tabId },
         files: CONTENT_SCRIPT_FILES
       });
-      await wait(700);
+      await wait(250);
       await chrome.tabs.sendMessage(tabId, payload);
       return { ok: true };
     } catch (injectionError) {
@@ -421,14 +423,23 @@ async function sendSidebarMessage(tabId, payload) {
 async function handleAutoScanComplete(payload) {
   const scan = payload && typeof payload === "object" ? payload : {};
   await TNFStorage.setLastScan(scan);
+  const initialSync = await syncSidebarWithStoredContext(scan);
   const syncResult = await analyzeAndSyncSidebarAfterAutoScan(scan);
+  const finalSync = syncResult.syncedCount > 0 ? syncResult : initialSync;
   await TNFStorage.saveSettings({
     lastRefreshStatus: [
       `Auto scan complete. ${scan.scannedCount || 0} tweets checked, ${scan.savedCount || 0} new relevant tweets added.`,
-      syncResult.syncedCount > 0 ? `Sidebar synced on ${syncResult.syncedCount} target tab(s).` : syncResult.reason
+      finalSync.syncedCount > 0 ? `Sidebar synced on ${finalSync.syncedCount} target tab(s).` : finalSync.reason
     ].filter(Boolean).join(" ")
   });
-  return { ok: true, ...syncResult };
+  return { ok: true, ...finalSync };
+}
+
+async function syncSidebarWithStoredContext(scan) {
+  const settings = await TNFStorage.getSettings();
+  const sessionBrief = await TNFStorage.getSessionBrief();
+  const assetBiases = await TNFStorage.getAssetBiases();
+  return syncSidebarTargetsWithLatestScan(scan, sessionBrief, assetBiases, settings);
 }
 
 async function analyzeAndSyncSidebarAfterAutoScan(scan) {

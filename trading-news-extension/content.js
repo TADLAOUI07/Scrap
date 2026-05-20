@@ -7,7 +7,7 @@
   const SIDEBAR_ID = "tnf-sidebar";
   const SIDEBAR_STYLE_ID = "tnf-sidebar-style";
   const LATEST_TWEET_LIMIT = 10;
-  const SLOW_SCROLL_DELAY_MS = 1800;
+  const SLOW_SCROLL_DELAY_MS = 850;
   const MAX_SCROLL_STEPS = 6;
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -44,9 +44,9 @@
 
   async function waitForTweetsThenScan() {
     const startedAt = Date.now();
-    while (Date.now() - startedAt < 12000) {
+    while (Date.now() - startedAt < 8000) {
       if (document.querySelectorAll("article").length > 0) break;
-      await delay(500);
+      await delay(250);
     }
     return scanLatestTweets("auto-refresh");
   }
@@ -65,7 +65,7 @@
 
   async function scanLatestTweets(source) {
     window.scrollTo({ top: 0, behavior: "smooth" });
-    await delay(1200);
+    await delay(650);
 
     const rawTweets = [];
     const seen = new Set();
@@ -632,7 +632,7 @@
         setTimeout(() => {
           button.disabled = false;
           button.textContent = originalText;
-        }, 1600);
+        }, 900);
         return;
       }
 
@@ -646,14 +646,14 @@
         setTimeout(() => {
           button.disabled = false;
           button.textContent = originalText;
-        }, 1800);
+        }, 900);
       });
     } catch (error) {
       button.textContent = "Error";
       setTimeout(() => {
         button.disabled = false;
         button.textContent = originalText;
-      }, 1600);
+      }, 900);
     }
   }
 
