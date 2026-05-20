@@ -8,7 +8,8 @@
     journal: [],
     filter: "all",
     settings: null,
-    sessionBrief: null
+    sessionBrief: null,
+    assetBiases: null
   };
 
   const els = {};
@@ -23,6 +24,7 @@
     state.history = await TNFStorage.getHistory();
     state.journal = await TNFStorage.getJournal();
     state.sessionBrief = await TNFStorage.getSessionBrief();
+    state.assetBiases = await TNFStorage.getAssetBiases();
     const lastScan = await TNFStorage.getLastScan();
     state.tweets = lastScan && Array.isArray(lastScan.tweets) ? lastScan.tweets : state.history;
     state.rawTweets = lastScan && Array.isArray(lastScan.rawTweets) ? lastScan.rawTweets : [];
@@ -210,7 +212,7 @@
           allTweets: sidebarAllTweets,
           rawCount: state.rawTweets.length || sidebarTweets.length,
           sessionBrief: state.sessionBrief,
-          assetBiases: null,
+          assetBiases: state.assetBiases,
           scannedAt: getLastScanTime()
         }
       });
@@ -442,8 +444,28 @@
       }
 
       renderAiAnalysis(response.analysis, response.analyzedAt);
+      await generateAssetBiases(tweets);
     } finally {
       els.aiAnalyzeButton.disabled = false;
+    }
+  }
+
+  async function generateAssetBiases(sourceTweets) {
+    const tweets = Array.isArray(sourceTweets) ? sourceTweets : getAiInputTweets();
+    if (!tweets.length) return null;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "TNF_ANALYZE_ASSETS",
+        payload: { tweets }
+      });
+      if (!response || !response.ok) return null;
+
+      state.assetBiases = response.analysis;
+      await TNFStorage.setAssetBiases(response.analysis);
+      return response.analysis;
+    } catch (error) {
+      return null;
     }
   }
 
