@@ -269,16 +269,15 @@ async function scanWatchedTwitterTab() {
   }
 
   const initialSync = await syncSidebarWithStoredContext(scan);
-  const syncResult = await analyzeAndSyncSidebarAfterAutoScan(scan);
-  const finalSync = syncResult.syncedCount > 0 ? syncResult : initialSync;
+  runAiAnalysisAndSync(scan, "Manual sidebar scan");
   await TNFStorage.saveSettings({
     lastRefreshStatus: [
       `Manual sidebar scan complete. ${scan.scannedCount || 0} tweets checked, ${scan.savedCount || 0} new relevant tweets added.`,
-      finalSync.syncedCount > 0 ? `Sidebar synced on ${finalSync.syncedCount} target tab(s).` : finalSync.reason
+      initialSync.syncedCount > 0 ? `Sidebar synced on ${initialSync.syncedCount} target tab(s). AI analysis is updating in the background.` : initialSync.reason
     ].filter(Boolean).join(" ")
   });
 
-  return { ok: true, scan, ...finalSync };
+  return { ok: true, scan, ...initialSync, aiPending: true };
 }
 
 async function sendScanMessageToTab(tabId) {
@@ -424,15 +423,14 @@ async function handleAutoScanComplete(payload) {
   const scan = payload && typeof payload === "object" ? payload : {};
   await TNFStorage.setLastScan(scan);
   const initialSync = await syncSidebarWithStoredContext(scan);
-  const syncResult = await analyzeAndSyncSidebarAfterAutoScan(scan);
-  const finalSync = syncResult.syncedCount > 0 ? syncResult : initialSync;
+  runAiAnalysisAndSync(scan, "Auto scan");
   await TNFStorage.saveSettings({
     lastRefreshStatus: [
       `Auto scan complete. ${scan.scannedCount || 0} tweets checked, ${scan.savedCount || 0} new relevant tweets added.`,
-      finalSync.syncedCount > 0 ? `Sidebar synced on ${finalSync.syncedCount} target tab(s).` : finalSync.reason
+      initialSync.syncedCount > 0 ? `Sidebar synced on ${initialSync.syncedCount} target tab(s). AI analysis is updating in the background.` : initialSync.reason
     ].filter(Boolean).join(" ")
   });
-  return { ok: true, ...finalSync };
+  return { ok: true, ...initialSync, aiPending: true };
 }
 
 async function syncSidebarWithStoredContext(scan) {
@@ -440,6 +438,19 @@ async function syncSidebarWithStoredContext(scan) {
   const sessionBrief = await TNFStorage.getSessionBrief();
   const assetBiases = await TNFStorage.getAssetBiases();
   return syncSidebarTargetsWithLatestScan(scan, sessionBrief, assetBiases, settings);
+}
+
+function runAiAnalysisAndSync(scan, label) {
+  analyzeAndSyncSidebarAfterAutoScan(scan)
+    .then((syncResult) => TNFStorage.saveSettings({
+      lastRefreshStatus: [
+        `${label} AI analysis complete.`,
+        syncResult.syncedCount > 0 ? `Sidebar updated on ${syncResult.syncedCount} target tab(s).` : syncResult.reason
+      ].filter(Boolean).join(" ")
+    }))
+    .catch((error) => TNFStorage.saveSettings({
+      lastRefreshStatus: `${label} synced. AI analysis failed: ${error && error.message ? error.message : "unknown error"}.`
+    }));
 }
 
 async function analyzeAndSyncSidebarAfterAutoScan(scan) {
@@ -460,17 +471,18 @@ async function analyzeAndSyncSidebarAfterAutoScan(scan) {
     const analysisSettings = shouldUseOpenAI ? settings : { ...settings, openAiApiKey: "" };
 
     try {
+      assetBiases = await TNFAI.generateInstrumentBiases(analysisSettings, analysisTweets);
+      await TNFStorage.setAssetBiases(assetBiases);
+      await syncSidebarTargetsWithLatestScan(scan, sessionBrief, assetBiases, settings);
+    } catch (error) {
+      // Sidebar can still render local tweet context without asset-bias details.
+    }
+
+    try {
       sessionBrief = await TNFAI.generateSessionBrief(analysisSettings, analysisTweets);
       await TNFStorage.setSessionBrief(sessionBrief);
     } catch (error) {
       // Keep the previous brief if both OpenAI and local fallback fail unexpectedly.
-    }
-
-    try {
-      assetBiases = await TNFAI.generateInstrumentBiases(analysisSettings, analysisTweets);
-      await TNFStorage.setAssetBiases(assetBiases);
-    } catch (error) {
-      // Sidebar can still render local tweet context without asset-bias details.
     }
   } else if (!tweets.length) {
     assetBiases = {
