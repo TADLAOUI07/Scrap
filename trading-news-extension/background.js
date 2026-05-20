@@ -53,6 +53,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "TNF_SCAN_WATCHED_TAB") {
+    scanWatchedTwitterTab().then(sendResponse);
+    return true;
+  }
+
   if (message.type === "TNF_SHOW_SIDEBAR_ON_TAB") {
     showSidebarOnTargetTab(message.payload || {}).then(sendResponse);
     return true;
@@ -242,6 +247,60 @@ async function scanActiveTab() {
   }
 }
 
+async function scanWatchedTwitterTab() {
+  const settings = await TNFStorage.getSettings();
+  const targetTab = await getRefreshTargetTab(settings);
+  if (!targetTab || !targetTab.id || !TNFUtils.isTwitterUrl(targetTab.url || "")) {
+    return {
+      ok: false,
+      error: "No watched X/Twitter tab found. Open X/Twitter and click Watch This Tab first."
+    };
+  }
+
+  await TNFStorage.saveSettings({
+    autoRefreshTargetTabId: targetTab.id,
+    autoRefreshTargetUrl: targetTab.url || "",
+    autoRefreshTargetTitle: targetTab.title || ""
+  });
+
+  const scan = await sendScanMessageToTab(targetTab.id);
+  if (!scan || !scan.ok) {
+    return scan || { ok: false, error: "Watched tab scan failed." };
+  }
+
+  const syncResult = await analyzeAndSyncSidebarAfterAutoScan(scan);
+  await TNFStorage.saveSettings({
+    lastRefreshStatus: [
+      `Manual sidebar scan complete. ${scan.scannedCount || 0} tweets checked, ${scan.savedCount || 0} new relevant tweets added.`,
+      syncResult.syncedCount > 0 ? `Sidebar synced on ${syncResult.syncedCount} target tab(s).` : syncResult.reason
+    ].filter(Boolean).join(" ")
+  });
+
+  return { ok: true, scan, ...syncResult };
+}
+
+async function sendScanMessageToTab(tabId) {
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { type: "TNF_MANUAL_SCAN" });
+    return response || { ok: false, error: "No response from the watched X/Twitter tab." };
+  } catch (error) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: CONTENT_SCRIPT_FILES
+      });
+      await wait(700);
+      const response = await chrome.tabs.sendMessage(tabId, { type: "TNF_MANUAL_SCAN" });
+      return response || { ok: false, error: "No response from the watched X/Twitter tab after script injection." };
+    } catch (injectionError) {
+      return {
+        ok: false,
+        error: "Could not scan the watched X/Twitter tab. Reload it once, then try again."
+      };
+    }
+  }
+}
+
 async function showSidebarOnTargetTab(payload) {
   const targetTab = await findSidebarTargetTab(payload.targetTabId);
   if (!targetTab || !targetTab.id || !isSidebarAllowedUrl(targetTab.url || "")) {
@@ -280,9 +339,9 @@ async function showSidebarOnTargetTab(payload) {
   if (response.ok) {
     await TNFStorage.saveSettings({
       sidebarTargetUrl: settings.sidebarTargetUrl || targetTab.url || "",
-      autoRefreshTargetTabId: targetTab.id,
-      autoRefreshTargetUrl: targetTab.url || "",
-      autoRefreshTargetTitle: targetTab.title || ""
+      sidebarLastTargetTabId: targetTab.id,
+      sidebarLastTargetUrl: targetTab.url || "",
+      sidebarLastTargetTitle: targetTab.title || ""
     });
   }
 
@@ -454,10 +513,6 @@ function getFreshTweetsForAssetAnalysis(tweets, scannedAt) {
 }
 
 async function syncSidebarTargetsWithLatestScan(scan, sessionBrief, assetBiases, settings) {
-  if (!settings.autoShowSidebarEnabled || !settings.sidebarTargetUrl) {
-    return { syncedCount: 0, reason: "Sidebar auto-show is off or no target URL is configured." };
-  }
-
   const tweets = Array.isArray(scan.tweets) && scan.tweets.length
     ? scan.tweets
     : getAutoScanAnalysisTweets(scan);
@@ -468,10 +523,9 @@ async function syncSidebarTargetsWithLatestScan(scan, sessionBrief, assetBiases,
     return { syncedCount: 0, reason: "No latest scan data available for sidebar sync." };
   }
 
-  const targetTabs = await chrome.tabs.query({ url: SIDEBAR_TARGET_PATTERNS });
-  const matchingTabs = targetTabs.filter((tab) => tab && tab.id && urlMatchesSidebarTarget(tab.url || "", settings.sidebarTargetUrl));
+  const matchingTabs = await findSidebarSyncTargets(settings);
   if (!matchingTabs.length) {
-    return { syncedCount: 0, reason: "Sidebar target tab is not open." };
+    return { syncedCount: 0, reason: "No open sidebar target tab found." };
   }
 
   let syncedCount = 0;
@@ -493,6 +547,26 @@ async function syncSidebarTargetsWithLatestScan(scan, sessionBrief, assetBiases,
     syncedCount,
     reason: syncedCount > 0 ? "" : "Sidebar target was found but could not be updated."
   };
+}
+
+async function findSidebarSyncTargets(settings) {
+  const targetTabs = await chrome.tabs.query({ url: SIDEBAR_TARGET_PATTERNS });
+  const byId = new Map();
+
+  targetTabs.forEach((tab) => {
+    if (!tab || !tab.id || !isSidebarAllowedUrl(tab.url || "")) return;
+    if (settings.autoShowSidebarEnabled && settings.sidebarTargetUrl && urlMatchesSidebarTarget(tab.url || "", settings.sidebarTargetUrl)) {
+      byId.set(tab.id, tab);
+    }
+    if (settings.sidebarLastTargetTabId && tab.id === settings.sidebarLastTargetTabId) {
+      byId.set(tab.id, tab);
+    }
+    if (settings.sidebarLastTargetUrl && urlMatchesSidebarTarget(tab.url || "", settings.sidebarLastTargetUrl)) {
+      byId.set(tab.id, tab);
+    }
+  });
+
+  return Array.from(byId.values());
 }
 
 async function getAutoRefreshStatus() {
@@ -560,6 +634,9 @@ async function findSidebarTargetTab(preferredTabId) {
     if (matched) return matched;
   }
 
+  const lastSidebarTarget = await getLastSidebarTargetTab(settings);
+  if (lastSidebarTarget) return lastSidebarTarget;
+
   const storedTarget = await getStoredTargetTab(settings);
   if (storedTarget) return storedTarget;
 
@@ -568,6 +645,24 @@ async function findSidebarTargetTab(preferredTabId) {
 
   const targetTabs = await chrome.tabs.query({ url: SIDEBAR_TARGET_PATTERNS });
   return targetTabs.find((tab) => tab && tab.id && isSidebarAllowedUrl(tab.url || "")) || null;
+}
+
+async function getLastSidebarTargetTab(settings) {
+  if (settings.sidebarLastTargetTabId) {
+    try {
+      const target = await chrome.tabs.get(settings.sidebarLastTargetTabId);
+      if (target && isSidebarAllowedUrl(target.url || "")) return target;
+    } catch (error) {
+      // Continue with URL lookup below.
+    }
+  }
+
+  if (settings.sidebarLastTargetUrl) {
+    const tabs = await chrome.tabs.query({ url: SIDEBAR_TARGET_PATTERNS });
+    return tabs.find((tab) => tab && tab.id && urlMatchesSidebarTarget(tab.url || "", settings.sidebarLastTargetUrl)) || null;
+  }
+
+  return null;
 }
 
 function urlMatchesSidebarTarget(currentUrl, targetUrl) {

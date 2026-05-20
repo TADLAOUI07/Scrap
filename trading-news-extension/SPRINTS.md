@@ -757,6 +757,9 @@ Livrables :
 - `Today` affiche tous les tweets scrappes du dernier scan avec seulement l'heure et le texte.
 - `Assets` calcule les biais et raisons depuis les tweets frais du dernier scan dans une fenetre glissante de 5 heures.
 - Les biais assets stockes de plus de 5 heures sont ignores dans la sidebar.
+- La cible sidebar ouverte est stockee separement de l'onglet X/Twitter surveille pour l'auto-refresh.
+- Bouton `Scan 10` ajoute dans la sidebar pour scanner l'onglet X/Twitter surveille depuis TradingView ou une page cible.
+- Le scan depuis la sidebar relance la synchronisation de la sidebar apres analyse/fallback.
 
 Statut : fait.
 

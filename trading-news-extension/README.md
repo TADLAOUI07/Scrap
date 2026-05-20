@@ -26,6 +26,8 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 - Draggable sidebar with configurable width, placement, top offset, side offset, and max height.
 - `Today` shows every tweet captured by the latest scrape with only tweet time and tweet text.
 - `Assets` bias and reasons use only fresh scraped tweets from the latest 5-hour window.
+- Sidebar opened on TradingView/X is remembered separately from the watched X/Twitter auto-refresh tab.
+- Sidebar includes a `Scan 10` button that scans the watched X/Twitter tab and syncs the open sidebar.
 - Local history with deduplication by tweet URL or text hash.
 - CSV export for filtered news and raw scan results.
 - Options page for keywords, categories, minimum score, theme, auto-refresh, import/export settings, and future AI Backend URL.
@@ -91,6 +93,8 @@ When enabled, the extension:
 The interval cannot be lower than 1 minute. The extension still refreshes only the watched X/Twitter tab and scans only the latest 10 tweets with slow scrolling.
 
 If `Auto-show sidebar on target page` is enabled and the target TradingView/X tab is already open, the sidebar is updated after every auto-refresh scan. OpenAI is used only when `Auto-analyze all scanned tweets after scan` is enabled and the scanned tweets pass the configured AI keyword filter; otherwise the sidebar falls back to local analysis.
+
+If you opened the sidebar manually, that tab is also remembered as the latest sidebar target and receives updates after auto-refresh. The sidebar target never replaces the watched X/Twitter tab used for refresh and scraping.
 
 To disable it:
 

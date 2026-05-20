@@ -233,7 +233,10 @@
           <strong>AI Trading Context Cockpit</strong>
           <small>${escapeHtml(String(todayTweets.length || tweets.length))} scraped / ${escapeHtml(String(rawCount || todayTweets.length || tweets.length))} scanned · Last scan ${escapeHtml(lastScanLabel)}</small>
         </div>
-        <button type="button" class="tnf-close" aria-label="Close">x</button>
+        <div class="tnf-head-actions">
+          <button type="button" class="tnf-scan-now">Scan 10</button>
+          <button type="button" class="tnf-close" aria-label="Close">x</button>
+        </div>
       </div>
       <nav class="tnf-tabs" aria-label="Cockpit tabs">
         ${dashboard.tabs.map((tab) => `<button type="button" class="tnf-tab ${tab.id === activeTabId ? "active" : ""}" data-tab="${tab.id}">${tab.label}</button>`).join("")}
@@ -330,6 +333,27 @@
         background: #1b2531;
         color: #fff;
         cursor: pointer;
+      }
+      #${SIDEBAR_ID} .tnf-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      #${SIDEBAR_ID} .tnf-scan-now {
+        height: 34px;
+        min-width: 72px;
+        padding: 0 10px;
+        border: 1px solid #f4d35e;
+        border-radius: 8px;
+        background: #f4d35e;
+        color: #101010;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 950;
+      }
+      #${SIDEBAR_ID} .tnf-scan-now:disabled {
+        opacity: .65;
+        cursor: wait;
       }
       #${SIDEBAR_ID} .tnf-card {
         margin: 0 0 12px;
@@ -581,6 +605,7 @@
     `;
 
     sidebar.querySelector(".tnf-close").addEventListener("click", () => sidebar.remove());
+    sidebar.querySelector(".tnf-scan-now").addEventListener("click", () => scanWatchedTweetsFromSidebar(sidebar));
     sidebar.querySelectorAll(".tnf-tab").forEach((button) => {
       button.addEventListener("click", () => {
         const tab = button.dataset.tab;
@@ -592,6 +617,44 @@
     document.documentElement.appendChild(sidebar);
     setupSidebarDragging(sidebar, settings);
     return { ok: true };
+  }
+
+  function scanWatchedTweetsFromSidebar(sidebar) {
+    const button = sidebar.querySelector(".tnf-scan-now");
+    if (!button) return;
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "Scanning";
+
+    try {
+      if (!globalThis.chrome || !chrome.runtime || !chrome.runtime.id || !chrome.runtime.sendMessage) {
+        button.textContent = "Unavailable";
+        setTimeout(() => {
+          button.disabled = false;
+          button.textContent = originalText;
+        }, 1600);
+        return;
+      }
+
+      chrome.runtime.sendMessage({ type: "TNF_SCAN_WATCHED_TAB" }, (response) => {
+        void chrome.runtime.lastError;
+        if (response && response.ok) {
+          button.textContent = "Synced";
+        } else {
+          button.textContent = "No X tab";
+        }
+        setTimeout(() => {
+          button.disabled = false;
+          button.textContent = originalText;
+        }, 1800);
+      });
+    } catch (error) {
+      button.textContent = "Error";
+      setTimeout(() => {
+        button.disabled = false;
+        button.textContent = originalText;
+      }, 1600);
+    }
   }
 
   function getSidebarLayout(settings) {
