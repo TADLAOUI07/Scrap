@@ -126,7 +126,7 @@
     const nextSettings = readSettingsFromForm();
     settings = await TNFStorage.saveSettings(nextSettings);
 
-    await chrome.runtime.sendMessage({
+    await sendRuntimeMessage({
       type: "TNF_SET_AUTO_REFRESH",
       enabled: settings.autoRefreshEnabled,
       minutes: settings.autoRefreshMinutes
@@ -206,9 +206,21 @@
 
   async function resetSettings() {
     settings = await TNFStorage.saveSettings(TNFStorage.DEFAULT_SETTINGS);
-    await chrome.runtime.sendMessage({ type: "TNF_SET_AUTO_REFRESH", enabled: false, minutes: 5 });
+    await sendRuntimeMessage({ type: "TNF_SET_AUTO_REFRESH", enabled: false, minutes: 5 });
     render();
     showMessage("Settings reset.");
+  }
+
+  async function sendRuntimeMessage(message) {
+    if (!globalThis.chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
+      return null;
+    }
+
+    try {
+      return await chrome.runtime.sendMessage(message);
+    } catch (error) {
+      return null;
+    }
   }
 
   function showMessage(text) {

@@ -111,14 +111,65 @@
 
   function getFromStorage(keys) {
     return new Promise((resolve) => {
-      chrome.storage.local.get(keys, resolve);
+      if (hasChromeStorage()) {
+        chrome.storage.local.get(keys, resolve);
+        return;
+      }
+      resolve(getFromLocalPreviewStorage(keys));
     });
   }
 
   function setInStorage(payload) {
     return new Promise((resolve) => {
-      chrome.storage.local.set(payload, resolve);
+      if (hasChromeStorage()) {
+        chrome.storage.local.set(payload, resolve);
+        return;
+      }
+      setInLocalPreviewStorage(payload);
+      resolve();
     });
+  }
+
+  function hasChromeStorage() {
+    return Boolean(globalThis.chrome && chrome.storage && chrome.storage.local);
+  }
+
+  function getFromLocalPreviewStorage(keys) {
+    const data = readLocalPreviewStore();
+    if (Array.isArray(keys)) {
+      return keys.reduce((result, key) => {
+        result[key] = data[key];
+        return result;
+      }, {});
+    }
+    if (typeof keys === "string") {
+      return { [keys]: data[keys] };
+    }
+    if (keys && typeof keys === "object") {
+      return Object.keys(keys).reduce((result, key) => {
+        result[key] = data[key] === undefined ? keys[key] : data[key];
+        return result;
+      }, {});
+    }
+    return { ...data };
+  }
+
+  function setInLocalPreviewStorage(payload) {
+    const data = readLocalPreviewStore();
+    Object.assign(data, payload);
+    try {
+      localStorage.setItem("tnf_preview_storage", JSON.stringify(data));
+    } catch (error) {
+      // Local preview storage is best-effort. Chrome extension storage is used in production.
+    }
+  }
+
+  function readLocalPreviewStore() {
+    try {
+      return JSON.parse(localStorage.getItem("tnf_preview_storage") || "{}");
+    } catch (error) {
+      return {};
+    }
   }
 
   async function getSettings() {
