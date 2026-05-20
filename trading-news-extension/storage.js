@@ -5,6 +5,7 @@
   const HISTORY_KEY = "tnf_history";
   const LAST_SCAN_KEY = "tnf_last_scan";
   const SESSION_BRIEF_KEY = "tnf_session_brief";
+  const ASSET_BIASES_KEY = "tnf_asset_biases";
   const JOURNAL_KEY = "tnf_journal";
   const LEGACY_DEFAULT_AI_ANALYSIS_PROMPT = [
     "Analyze the supplied X/Twitter news like a professional macro trader.",
@@ -287,6 +288,16 @@
     return brief;
   }
 
+  async function getAssetBiases() {
+    const data = await getFromStorage([ASSET_BIASES_KEY]);
+    return data[ASSET_BIASES_KEY] || null;
+  }
+
+  async function setAssetBiases(assetBiases) {
+    await setInStorage({ [ASSET_BIASES_KEY]: assetBiases });
+    return assetBiases;
+  }
+
   async function getJournal() {
     const data = await getFromStorage([JOURNAL_KEY]);
     return Array.isArray(data[JOURNAL_KEY]) ? data[JOURNAL_KEY] : [];
@@ -343,6 +354,7 @@
     HISTORY_KEY,
     LAST_SCAN_KEY,
     SESSION_BRIEF_KEY,
+    ASSET_BIASES_KEY,
     JOURNAL_KEY,
     LEGACY_DEFAULT_AI_ANALYSIS_PROMPT,
     DEFAULT_AI_ANALYSIS_PROMPT,
@@ -360,6 +372,8 @@
     setLastScan,
     getSessionBrief,
     setSessionBrief,
+    getAssetBiases,
+    setAssetBiases,
     getJournal,
     setJournal,
     saveJournalEntry,

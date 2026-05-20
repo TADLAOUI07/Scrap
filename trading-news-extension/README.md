@@ -83,8 +83,12 @@ When enabled, the extension:
 3. Waits briefly for tweets to load.
 4. Slowly scans the latest 10 unique tweets.
 5. Saves only new relevant non-duplicate tweets.
+6. Rebuilds the local/AI context from the latest scan.
+7. Pushes the refreshed data to the configured sidebar target tab if it is open.
 
 The interval cannot be lower than 1 minute. The extension still refreshes only the watched X/Twitter tab and scans only the latest 10 tweets with slow scrolling.
+
+If `Auto-show sidebar on target page` is enabled and the target TradingView/X tab is already open, the sidebar is updated after every auto-refresh scan. OpenAI is used only when `Auto-analyze all scanned tweets after scan` is enabled and the scanned tweets pass the configured AI keyword filter; otherwise the sidebar falls back to local analysis.
 
 To disable it:
 

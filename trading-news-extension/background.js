@@ -268,7 +268,7 @@ async function showSidebarOnTargetTab(payload) {
     tweets,
     rawCount: Number(payload.rawCount || storedPayload.rawCount || tweets.length),
     sessionBrief: payload.sessionBrief || storedPayload.sessionBrief || null,
-    assetBiases: payload.assetBiases || null,
+    assetBiases: payload.assetBiases || storedPayload.assetBiases || null,
     settings
   });
 
@@ -300,7 +300,7 @@ async function maybeAutoShowSidebar(tabId, tab) {
       tweets: payload.tweets,
       rawCount: payload.rawCount,
       sessionBrief: payload.sessionBrief,
-      assetBiases: null,
+      assetBiases: payload.assetBiases,
       settings
     });
   } catch (error) {
@@ -312,6 +312,7 @@ async function buildStoredSidebarPayload() {
   const lastScan = await TNFStorage.getLastScan();
   const history = await TNFStorage.getHistory();
   const sessionBrief = await TNFStorage.getSessionBrief();
+  const assetBiases = await TNFStorage.getAssetBiases();
   const scanTweets = lastScan && Array.isArray(lastScan.tweets) ? lastScan.tweets : [];
   const tweets = scanTweets.length ? scanTweets : history;
   const rawCount = lastScan && Array.isArray(lastScan.rawTweets)
@@ -321,7 +322,8 @@ async function buildStoredSidebarPayload() {
   return {
     tweets,
     rawCount,
-    sessionBrief
+    sessionBrief,
+    assetBiases
   };
 }
 
@@ -348,11 +350,104 @@ async function sendSidebarMessage(tabId, payload) {
 }
 
 async function handleAutoScanComplete(payload) {
-  await TNFStorage.setLastScan(payload);
+  const scan = payload && typeof payload === "object" ? payload : {};
+  await TNFStorage.setLastScan(scan);
+  const syncResult = await analyzeAndSyncSidebarAfterAutoScan(scan);
   await TNFStorage.saveSettings({
-    lastRefreshStatus: `Auto scan complete. ${payload.scannedCount || 0} tweets checked, ${payload.savedCount || 0} new relevant tweets added.`
+    lastRefreshStatus: [
+      `Auto scan complete. ${scan.scannedCount || 0} tweets checked, ${scan.savedCount || 0} new relevant tweets added.`,
+      syncResult.syncedCount > 0 ? `Sidebar synced on ${syncResult.syncedCount} target tab(s).` : syncResult.reason
+    ].filter(Boolean).join(" ")
   });
-  return { ok: true };
+  return { ok: true, ...syncResult };
+}
+
+async function analyzeAndSyncSidebarAfterAutoScan(scan) {
+  const settings = await TNFStorage.getSettings();
+  const tweets = getAutoScanAnalysisTweets(scan);
+  let sessionBrief = await TNFStorage.getSessionBrief();
+  let assetBiases = await TNFStorage.getAssetBiases();
+
+  if (settings.aiAutoAnalyze !== false && tweets.length) {
+    const aiTweets = TNFAI.filterTweetsForAiKeywords(tweets, settings);
+    const shouldUseOpenAI = Boolean(settings.openAiApiKey)
+      && (settings.aiKeywordGateEnabled === false || aiTweets.length > 0);
+    const analysisTweets = settings.aiKeywordGateEnabled === false
+      ? tweets
+      : aiTweets.length
+        ? aiTweets
+        : tweets;
+    const analysisSettings = shouldUseOpenAI ? settings : { ...settings, openAiApiKey: "" };
+
+    try {
+      sessionBrief = await TNFAI.generateSessionBrief(analysisSettings, analysisTweets);
+      await TNFStorage.setSessionBrief(sessionBrief);
+    } catch (error) {
+      // Keep the previous brief if both OpenAI and local fallback fail unexpectedly.
+    }
+
+    try {
+      assetBiases = await TNFAI.generateInstrumentBiases(analysisSettings, analysisTweets);
+      await TNFStorage.setAssetBiases(assetBiases);
+    } catch (error) {
+      // Sidebar can still render local tweet context without asset-bias details.
+    }
+  }
+
+  return syncSidebarTargetsWithLatestScan(scan, sessionBrief, assetBiases, settings);
+}
+
+function getAutoScanAnalysisTweets(scan) {
+  const byId = new Map();
+  const rawTweets = Array.isArray(scan.rawTweets) ? scan.rawTweets : [];
+  const filteredTweets = Array.isArray(scan.tweets) ? scan.tweets : [];
+
+  rawTweets.forEach((tweet) => {
+    if (tweet && tweet.id) byId.set(tweet.id, tweet);
+  });
+  filteredTweets.forEach((tweet) => {
+    if (!tweet || !tweet.id) return;
+    byId.set(tweet.id, { ...(byId.get(tweet.id) || {}), ...tweet });
+  });
+
+  return Array.from(byId.values()).slice(0, 20);
+}
+
+async function syncSidebarTargetsWithLatestScan(scan, sessionBrief, assetBiases, settings) {
+  if (!settings.autoShowSidebarEnabled || !settings.sidebarTargetUrl) {
+    return { syncedCount: 0, reason: "Sidebar auto-show is off or no target URL is configured." };
+  }
+
+  const tweets = Array.isArray(scan.tweets) && scan.tweets.length
+    ? scan.tweets
+    : getAutoScanAnalysisTweets(scan);
+  if (!tweets.length) {
+    return { syncedCount: 0, reason: "No latest scan data available for sidebar sync." };
+  }
+
+  const targetTabs = await chrome.tabs.query({ url: SIDEBAR_TARGET_PATTERNS });
+  const matchingTabs = targetTabs.filter((tab) => tab && tab.id && urlMatchesSidebarTarget(tab.url || "", settings.sidebarTargetUrl));
+  if (!matchingTabs.length) {
+    return { syncedCount: 0, reason: "Sidebar target tab is not open." };
+  }
+
+  let syncedCount = 0;
+  for (const tab of matchingTabs) {
+    const response = await sendSidebarMessage(tab.id, {
+      type: "TNF_SHOW_SIDEBAR",
+      tweets,
+      rawCount: Array.isArray(scan.rawTweets) ? scan.rawTweets.length : Number(scan.scannedCount || tweets.length),
+      sessionBrief,
+      assetBiases,
+      settings
+    });
+    if (response.ok) syncedCount += 1;
+  }
+
+  return {
+    syncedCount,
+    reason: syncedCount > 0 ? "" : "Sidebar target was found but could not be updated."
+  };
 }
 
 async function getAutoRefreshStatus() {

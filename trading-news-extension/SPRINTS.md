@@ -748,6 +748,12 @@ Livrables :
 - La sidebar automatique s'affiche seulement quand l'utilisateur charge ou recharge l'URL cible.
 - Le scan des tweets reste limite a X/Twitter.
 - Les donnees affichees viennent du dernier scan synchronise ou de l'historique local.
+- Apres `TNF_AUTO_SCAN_COMPLETE`, le background :
+  - sauvegarde le dernier scan,
+  - regenere le session brief,
+  - regenere les biais assets,
+  - respecte le filtre de mots-cles IA,
+  - pousse la sidebar mise a jour vers l'onglet cible ouvert.
 
 Statut : fait.
 
