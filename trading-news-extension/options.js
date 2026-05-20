@@ -33,6 +33,12 @@
       "autoRefreshMinutes",
       "autoShowSidebarEnabled",
       "sidebarTargetUrl",
+      "sidebarPlacement",
+      "sidebarTop",
+      "sidebarSideOffset",
+      "sidebarWidth",
+      "sidebarMaxHeight",
+      "sidebarDraggable",
       "minimumScore",
       "selectedPair",
       "watchedPairs",
@@ -75,6 +81,12 @@
     els.autoRefreshMinutes.value = settings.autoRefreshMinutes || 5;
     els.autoShowSidebarEnabled.checked = Boolean(settings.autoShowSidebarEnabled);
     els.sidebarTargetUrl.value = settings.sidebarTargetUrl || "";
+    els.sidebarPlacement.value = settings.sidebarPlacement || "right";
+    els.sidebarTop.value = settings.sidebarTop ?? 80;
+    els.sidebarSideOffset.value = settings.sidebarSideOffset ?? 20;
+    els.sidebarWidth.value = settings.sidebarWidth ?? 430;
+    els.sidebarMaxHeight.value = settings.sidebarMaxHeight ?? 80;
+    els.sidebarDraggable.checked = settings.sidebarDraggable !== false;
     els.autoRefreshState.textContent = `Auto-refresh: ${settings.autoRefreshEnabled ? "ON" : "OFF"} | every ${settings.autoRefreshMinutes || 5} min`;
     els.minimumScore.value = settings.minimumScore;
     renderPairOptions();
@@ -157,6 +169,12 @@
       autoRefreshMinutes: TNFUtils.clampNumber(els.autoRefreshMinutes.value, 1, 1440),
       autoShowSidebarEnabled: els.autoShowSidebarEnabled.checked,
       sidebarTargetUrl: els.sidebarTargetUrl.value.trim(),
+      sidebarPlacement: els.sidebarPlacement.value,
+      sidebarTop: TNFUtils.clampNumber(els.sidebarTop.value, 0, 900),
+      sidebarSideOffset: TNFUtils.clampNumber(els.sidebarSideOffset.value, 0, 1200),
+      sidebarWidth: TNFUtils.clampNumber(els.sidebarWidth.value, 320, 760),
+      sidebarMaxHeight: TNFUtils.clampNumber(els.sidebarMaxHeight.value, 45, 95),
+      sidebarDraggable: els.sidebarDraggable.checked,
       minimumScore: TNFUtils.clampNumber(els.minimumScore.value, 0, 5),
       selectedPair: els.selectedPair.value,
       watchedPairs: els.watchedPairs.value

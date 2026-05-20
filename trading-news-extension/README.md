@@ -23,6 +23,7 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 - Popup filters: All, High Impact, XAUUSD, USD, Fed, Inflation, Geopolitics.
 - Floating sidebar on X/Twitter via `Show Sidebar`, focused on Assets, Today, and Macro Desk.
 - Optional auto-show sidebar on a configured X/Twitter or TradingView URL, using the latest synchronized scan data.
+- Draggable sidebar with configurable width, placement, top offset, side offset, and max height.
 - Local history with deduplication by tweet URL or text hash.
 - CSV export for filtered news and raw scan results.
 - Options page for keywords, categories, minimum score, theme, auto-refresh, import/export settings, and future AI Backend URL.
@@ -60,6 +61,8 @@ You can also auto-display the sidebar on a specific page, including a TradingVie
 6. Open or reload the target X/Twitter or TradingView tab.
 
 The extension will not open a new tab automatically. It only shows the sidebar when the matching target page is already loaded by you. Tweet scanning still runs only on X/Twitter pages.
+
+The sidebar can be moved by dragging its header. The last dragged position is saved locally and reused the next time the sidebar opens.
 
 ## Auto-Refresh
 
@@ -103,6 +106,7 @@ You can configure:
 - Minimum impact score to display.
 - Auto-refresh interval.
 - Auto-show sidebar on a target X/Twitter or TradingView URL.
+- Sidebar placement, width, height, and draggable behavior.
 - Watched pairs/markets.
 - Default `News for PAIR` market.
 - Theme: system, light, or dark.

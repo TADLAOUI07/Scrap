@@ -5,6 +5,7 @@
   globalThis.__TNF_CONTENT_LOADED__ = true;
 
   const SIDEBAR_ID = "tnf-sidebar";
+  const SIDEBAR_STYLE_ID = "tnf-sidebar-style";
   const LATEST_TWEET_LIMIT = 10;
   const SLOW_SCROLL_DELAY_MS = 1800;
   const MAX_SCROLL_STEPS = 6;
@@ -26,7 +27,7 @@
     }
 
     if (message.type === "TNF_SHOW_SIDEBAR") {
-      showSidebar(message.tweets || [], message.rawCount || 0, message.sessionBrief || null, message.assetBiases || null).then(sendResponse);
+      showSidebar(message.tweets || [], message.rawCount || 0, message.sessionBrief || null, message.assetBiases || null, message.settings || null).then(sendResponse);
       return true;
     }
 
@@ -189,15 +190,20 @@
     return link ? TNFUtils.normalizeText(link.textContent) : "Unknown";
   }
 
-  async function showSidebar(tweets, rawCount, sessionBrief, assetBiases) {
+  async function showSidebar(tweets, rawCount, sessionBrief, assetBiases, suppliedSettings) {
     const existing = document.getElementById(SIDEBAR_ID);
     if (existing) existing.remove();
+    const existingStyle = document.getElementById(SIDEBAR_STYLE_ID);
+    if (existingStyle) existingStyle.remove();
 
+    const settings = suppliedSettings || await TNFStorage.getSettings();
+    const sidebarLayout = getSidebarLayout(settings);
     const sortedTweets = [...tweets].sort((a, b) => (b.contextScoreValue || b.impactScore) - (a.contextScoreValue || a.impactScore));
     const dashboard = buildSidebarDashboard(sortedTweets, rawCount, sessionBrief, assetBiases);
     const sidebar = document.createElement("aside");
     const activeTabId = dashboard.tabs[0] ? dashboard.tabs[0].id : "assets";
     sidebar.id = SIDEBAR_ID;
+    applySidebarLayout(sidebar, sidebarLayout);
     sidebar.innerHTML = `
       <div class="tnf-sidebar-head">
         <div>
@@ -215,13 +221,10 @@
     `;
 
     const style = document.createElement("style");
+    style.id = SIDEBAR_STYLE_ID;
     style.textContent = `
       #${SIDEBAR_ID} {
         position: fixed;
-        right: 20px;
-        top: 80px;
-        width: 430px;
-        max-height: 80vh;
         overflow: auto;
         z-index: 2147483647;
         background: #090c10;
@@ -243,6 +246,13 @@
         padding: 16px 18px;
         background: #10161e;
         border-bottom: 1px solid #2b3746;
+        cursor: move;
+        user-select: none;
+        touch-action: none;
+      }
+      #${SIDEBAR_ID}.tnf-dragging {
+        opacity: .96;
+        box-shadow: 0 30px 90px rgba(0,0,0,.66);
       }
       #${SIDEBAR_ID} .tnf-sidebar-head strong {
         display: block;
@@ -521,7 +531,106 @@
     });
     document.documentElement.appendChild(style);
     document.documentElement.appendChild(sidebar);
+    setupSidebarDragging(sidebar, settings);
     return { ok: true };
+  }
+
+  function getSidebarLayout(settings) {
+    const width = clampNumber(settings.sidebarWidth, 320, Math.min(760, Math.max(320, window.innerWidth - 24)), 430);
+    const maxHeight = clampNumber(settings.sidebarMaxHeight, 45, 95, 80);
+    const top = clampNumber(settings.sidebarTop, 0, Math.max(0, window.innerHeight - 80), 80);
+    const sideOffset = clampNumber(settings.sidebarSideOffset, 0, Math.max(0, window.innerWidth - width), 20);
+    const placement = ["left", "right", "custom"].includes(settings.sidebarPlacement) ? settings.sidebarPlacement : "right";
+
+    return {
+      width,
+      maxHeight,
+      top,
+      sideOffset,
+      placement
+    };
+  }
+
+  function applySidebarLayout(sidebar, layout) {
+    sidebar.style.width = `${layout.width}px`;
+    sidebar.style.maxHeight = `${layout.maxHeight}vh`;
+    sidebar.style.top = `${layout.top}px`;
+
+    if (layout.placement === "left" || layout.placement === "custom") {
+      sidebar.style.left = `${layout.sideOffset}px`;
+      sidebar.style.right = "auto";
+      return;
+    }
+
+    sidebar.style.right = `${layout.sideOffset}px`;
+    sidebar.style.left = "auto";
+  }
+
+  function setupSidebarDragging(sidebar, settings) {
+    if (settings.sidebarDraggable === false) return;
+
+    const header = sidebar.querySelector(".tnf-sidebar-head");
+    if (!header) return;
+
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+    let dragging = false;
+
+    header.addEventListener("pointerdown", (event) => {
+      if (event.target.closest("button, a")) return;
+      const rect = sidebar.getBoundingClientRect();
+      dragging = true;
+      startX = event.clientX;
+      startY = event.clientY;
+      startLeft = rect.left;
+      startTop = rect.top;
+      sidebar.classList.add("tnf-dragging");
+      header.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+
+    header.addEventListener("pointermove", (event) => {
+      if (!dragging) return;
+      const maxLeft = Math.max(0, window.innerWidth - sidebar.offsetWidth);
+      const maxTop = Math.max(0, window.innerHeight - Math.min(sidebar.offsetHeight, window.innerHeight));
+      const nextLeft = clampNumber(startLeft + event.clientX - startX, 0, maxLeft, startLeft);
+      const nextTop = clampNumber(startTop + event.clientY - startY, 0, maxTop, startTop);
+      sidebar.style.left = `${nextLeft}px`;
+      sidebar.style.right = "auto";
+      sidebar.style.top = `${nextTop}px`;
+    });
+
+    header.addEventListener("pointerup", (event) => {
+      if (!dragging) return;
+      dragging = false;
+      sidebar.classList.remove("tnf-dragging");
+      header.releasePointerCapture(event.pointerId);
+      saveDraggedSidebarPosition(sidebar);
+    });
+
+    header.addEventListener("pointercancel", () => {
+      dragging = false;
+      sidebar.classList.remove("tnf-dragging");
+    });
+  }
+
+  function saveDraggedSidebarPosition(sidebar) {
+    const rect = sidebar.getBoundingClientRect();
+    TNFStorage.saveSettings({
+      sidebarPlacement: "custom",
+      sidebarTop: Math.round(rect.top),
+      sidebarSideOffset: Math.round(rect.left),
+      sidebarWidth: Math.round(rect.width),
+      sidebarDraggable: true
+    }).catch(() => {});
+  }
+
+  function clampNumber(value, min, max, fallback) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    return Math.min(max, Math.max(min, number));
   }
 
   function buildSidebarDashboard(tweets, rawCount, sessionBrief, assetBiases) {

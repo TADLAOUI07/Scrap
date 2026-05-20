@@ -732,6 +732,18 @@ Livrables :
   - `sidebarTargetUrl`.
 - Nouvelle option dans `options.html` pour coller l'URL cible X/Twitter ou TradingView.
 - Permission hote ajoutee pour `https://*.tradingview.com/*` afin d'injecter uniquement la sidebar sur le graphique cible.
+- Sidebar draggable depuis son header.
+- Position sauvegardee localement apres drag :
+  - `sidebarPlacement: custom`,
+  - `sidebarTop`,
+  - `sidebarSideOffset`.
+- Options sidebar ajoutees :
+  - placement,
+  - top,
+  - side offset,
+  - width,
+  - max height,
+  - draggable on/off.
 - La sidebar automatique n'ouvre jamais de nouvel onglet.
 - La sidebar automatique s'affiche seulement quand l'utilisateur charge ou recharge l'URL cible.
 - Le scan des tweets reste limite a X/Twitter.

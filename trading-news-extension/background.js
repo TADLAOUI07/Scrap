@@ -252,6 +252,7 @@ async function showSidebarOnTargetTab(payload) {
   }
 
   const storedPayload = await buildStoredSidebarPayload();
+  const settings = await TNFStorage.getSettings();
   const tweets = Array.isArray(payload.tweets) && payload.tweets.length
     ? payload.tweets
     : storedPayload.tweets;
@@ -267,11 +268,11 @@ async function showSidebarOnTargetTab(payload) {
     tweets,
     rawCount: Number(payload.rawCount || storedPayload.rawCount || tweets.length),
     sessionBrief: payload.sessionBrief || storedPayload.sessionBrief || null,
-    assetBiases: payload.assetBiases || null
+    assetBiases: payload.assetBiases || null,
+    settings
   });
 
   if (response.ok) {
-    const settings = await TNFStorage.getSettings();
     await TNFStorage.saveSettings({
       sidebarTargetUrl: settings.sidebarTargetUrl || targetTab.url || "",
       autoRefreshTargetTabId: targetTab.id,
@@ -299,7 +300,8 @@ async function maybeAutoShowSidebar(tabId, tab) {
       tweets: payload.tweets,
       rawCount: payload.rawCount,
       sessionBrief: payload.sessionBrief,
-      assetBiases: null
+      assetBiases: null,
+      settings
     });
   } catch (error) {
     // Auto sidebar is best-effort; manual Show Sidebar remains available.

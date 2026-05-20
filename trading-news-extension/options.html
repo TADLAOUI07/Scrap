@@ -45,6 +45,43 @@
         </label>
         <p class="state-text">When enabled, the sidebar opens automatically on the matching X/Twitter or TradingView tab after the page loads, using the latest synchronized scan data.</p>
 
+        <div class="form-grid">
+          <label>
+            Sidebar placement
+            <select id="sidebarPlacement">
+              <option value="right">Right</option>
+              <option value="left">Left</option>
+              <option value="custom">Custom / draggable</option>
+            </select>
+          </label>
+
+          <label>
+            Sidebar top position, px
+            <input id="sidebarTop" type="number" min="0" max="900" step="1">
+          </label>
+
+          <label>
+            Sidebar side offset, px
+            <input id="sidebarSideOffset" type="number" min="0" max="1200" step="1">
+          </label>
+
+          <label>
+            Sidebar width, px
+            <input id="sidebarWidth" type="number" min="320" max="760" step="10">
+          </label>
+
+          <label>
+            Sidebar max height, vh
+            <input id="sidebarMaxHeight" type="number" min="45" max="95" step="1">
+          </label>
+
+          <label class="row">
+            <span>Allow dragging sidebar position</span>
+            <input id="sidebarDraggable" type="checkbox">
+          </label>
+        </div>
+        <p class="state-text">Use `Custom / draggable` if you want the sidebar to keep the last position you set by dragging its header.</p>
+
         <label>
           Minimum score to display
           <input id="minimumScore" type="number" min="0" max="5" step="1">
