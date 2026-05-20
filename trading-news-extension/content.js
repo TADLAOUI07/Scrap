@@ -20,7 +20,7 @@
 
     if (message.type === "TNF_AUTO_SCAN_AFTER_REFRESH") {
       waitForTweetsThenScan().then((result) => {
-        chrome.runtime.sendMessage({ type: "TNF_AUTO_SCAN_COMPLETE", payload: result }).catch(() => {});
+        notifyAutoScanComplete(result);
         sendResponse(result);
       });
       return true;
@@ -49,6 +49,18 @@
       await delay(500);
     }
     return scanLatestTweets("auto-refresh");
+  }
+
+  function notifyAutoScanComplete(result) {
+    try {
+      if (!globalThis.chrome || !chrome.runtime || !chrome.runtime.id || !chrome.runtime.sendMessage) return;
+      chrome.runtime.sendMessage({ type: "TNF_AUTO_SCAN_COMPLETE", payload: result }, () => {
+        // Ignore invalidated contexts, closed tabs, and background wake-up race conditions.
+        void chrome.runtime.lastError;
+      });
+    } catch (error) {
+      // Chrome invalidates old content scripts when the extension is reloaded.
+    }
   }
 
   async function scanLatestTweets(source) {
