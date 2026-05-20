@@ -195,7 +195,8 @@
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const activeSidebarTabId = tab && tab.id && isSidebarTargetUrl(tab.url) ? tab.id : null;
     const sidebarTweets = getSidebarTweets();
-    if (!sidebarTweets.length) {
+    const sidebarAllTweets = getSidebarAllTweets(sidebarTweets);
+    if (!sidebarTweets.length && !sidebarAllTweets.length) {
       showMessage("No synchronized scan data yet. Run Scan Latest 10 Tweets once, then open the sidebar.");
       return;
     }
@@ -206,6 +207,7 @@
         payload: {
           targetTabId: activeSidebarTabId,
           tweets: sidebarTweets,
+          allTweets: sidebarAllTweets,
           rawCount: state.rawTweets.length || sidebarTweets.length,
           sessionBrief: state.sessionBrief,
           assetBiases: null,
@@ -227,6 +229,11 @@
     if (filtered.length) return filtered;
     if (state.tweets.length) return state.tweets;
     return state.history;
+  }
+
+  function getSidebarAllTweets(fallbackTweets) {
+    if (state.rawTweets.length) return state.rawTweets;
+    return fallbackTweets || state.tweets || [];
   }
 
   function getLastScanTime() {

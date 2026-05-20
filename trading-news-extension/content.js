@@ -29,6 +29,7 @@
     if (message.type === "TNF_SHOW_SIDEBAR") {
       showSidebar(
         message.tweets || [],
+        message.allTweets || message.tweets || [],
         message.rawCount || 0,
         message.sessionBrief || null,
         message.assetBiases || null,
@@ -197,7 +198,7 @@
     return link ? TNFUtils.normalizeText(link.textContent) : "Unknown";
   }
 
-  async function showSidebar(tweets, rawCount, sessionBrief, assetBiases, suppliedSettings, scannedAt) {
+  async function showSidebar(tweets, allTweets, rawCount, sessionBrief, assetBiases, suppliedSettings, scannedAt) {
     const existing = document.getElementById(SIDEBAR_ID);
     if (existing) existing.remove();
     const existingStyle = document.getElementById(SIDEBAR_STYLE_ID);
@@ -206,8 +207,10 @@
     const settings = suppliedSettings || await TNFStorage.getSettings();
     const sidebarLayout = getSidebarLayout(settings);
     const sortedTweets = [...tweets].sort((a, b) => (b.contextScoreValue || b.impactScore) - (a.contextScoreValue || a.impactScore));
+    const todayTweets = normalizeTodayTweets(allTweets && allTweets.length ? allTweets : sortedTweets, scannedAt);
+    const freshAssetTweets = filterTweetsForFreshAssetWindow(sortedTweets, scannedAt);
     const lastScanLabel = formatSidebarDate(scannedAt || getLatestTweetTimestamp(sortedTweets));
-    const dashboard = buildSidebarDashboard(sortedTweets, rawCount, sessionBrief, assetBiases, lastScanLabel);
+    const dashboard = buildSidebarDashboard(sortedTweets, todayTweets, freshAssetTweets, rawCount, sessionBrief, assetBiases, lastScanLabel);
     const sidebar = document.createElement("aside");
     const activeTabId = dashboard.tabs[0] ? dashboard.tabs[0].id : "assets";
     sidebar.id = SIDEBAR_ID;
@@ -216,7 +219,7 @@
       <div class="tnf-sidebar-head">
         <div>
           <strong>AI Trading Context Cockpit</strong>
-          <small>${escapeHtml(String(tweets.length))} shown / ${escapeHtml(String(rawCount || tweets.length))} scanned · Last scan ${escapeHtml(lastScanLabel)}</small>
+          <small>${escapeHtml(String(todayTweets.length || tweets.length))} scraped / ${escapeHtml(String(rawCount || todayTweets.length || tweets.length))} scanned · Last scan ${escapeHtml(lastScanLabel)}</small>
         </div>
         <button type="button" class="tnf-close" aria-label="Close">x</button>
       </div>
@@ -416,6 +419,25 @@
         font-size: 13px;
         line-height: 1.55;
         color: #e7edf5;
+      }
+      #${SIDEBAR_ID} .tnf-simple-tweet {
+        display: grid;
+        gap: 7px;
+        margin: 0 0 10px;
+        padding: 12px;
+        background: #10161e;
+        border: 1px solid #2b3746;
+        border-radius: 10px;
+      }
+      #${SIDEBAR_ID} .tnf-simple-time {
+        color: #f4d35e;
+        font-size: 11px;
+        font-weight: 900;
+      }
+      #${SIDEBAR_ID} .tnf-simple-text {
+        color: #e7edf5;
+        font-size: 13px;
+        line-height: 1.5;
       }
       #${SIDEBAR_ID} .tnf-meta {
         margin: 10px 0;
@@ -658,18 +680,18 @@
     return Math.min(max, Math.max(min, number));
   }
 
-  function buildSidebarDashboard(tweets, rawCount, sessionBrief, assetBiases, lastScanLabel) {
-    const today = buildTodayPanel(tweets, rawCount, sessionBrief, lastScanLabel);
+  function buildSidebarDashboard(tweets, todayTweets, freshAssetTweets, rawCount, sessionBrief, assetBiases, lastScanLabel) {
+    const today = buildTodayPanel(tweets, todayTweets, rawCount, sessionBrief, lastScanLabel);
     return {
       tabs: [
-        { id: "assets", label: "Assets", html: buildAssetsPanel(tweets, assetBiases, lastScanLabel) },
+        { id: "assets", label: "Assets", html: buildAssetsPanel(freshAssetTweets, assetBiases, lastScanLabel) },
         { id: "today", label: "Today", html: today },
         { id: "macro", label: "Macro Desk", html: buildMacroPanel(tweets) }
       ]
     };
   }
 
-  function buildTodayPanel(tweets, rawCount, sessionBrief, lastScanLabel) {
+  function buildTodayPanel(tweets, todayTweets, rawCount, sessionBrief, lastScanLabel) {
     const averageScore = tweets.length
       ? Math.round(tweets.reduce((sum, tweet) => sum + Number(tweet.contextScoreValue || 0), 0) / tweets.length)
       : 0;
@@ -677,9 +699,9 @@
     const topAssets = getTopItems(tweets.flatMap((tweet) => tweet.affectedAssets || []), 5);
     const mainTheme = getTopItems(tweets.map((tweet) => tweet.macroTheme || "Other"), 1)[0] || "None";
     const riskTone = highRisk > 0 ? "cautious" : averageScore >= 60 ? "risk-on" : "neutral";
-    const topTweetsHtml = tweets.length
-      ? tweets.slice(0, 5).map(renderSidebarTweetCard).join("")
-      : '<div class="tnf-empty">No relevant trading news yet. Run Scan Latest 10 Tweets from the popup.</div>';
+    const allTweetsHtml = todayTweets.length
+      ? todayTweets.map(renderSimpleTodayTweet).join("")
+      : '<div class="tnf-empty">No scraped tweets available yet. Run Scan Latest 10 Tweets from the popup.</div>';
 
     return `
       ${renderFreshnessBadge(lastScanLabel)}
@@ -690,8 +712,8 @@
         <div class="tnf-stat"><span>${escapeHtml(mainTheme)}</span><small>main driver</small></div>
       </div>
       ${renderSidebarBrief(sessionBrief, riskTone, mainTheme, topAssets)}
-      <div class="tnf-section-title">Top Important Tweets</div>
-      ${topTweetsHtml}
+      <div class="tnf-section-title">All Scraped Tweets (${escapeHtml(String(todayTweets.length))})</div>
+      ${allTweetsHtml}
     `;
   }
 
@@ -743,8 +765,13 @@
   function buildAssetsPanel(tweets, assetBiases, lastScanLabel) {
     const groups = groupBy(tweets.flatMap((tweet) => (tweet.affectedAssets || []).map((asset) => ({ asset, tweet }))), (item) => item.asset);
     const assets = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
-    if (assets.length === 0) return '<div class="tnf-empty">No watched assets detected in filtered tweets.</div>';
-    const aiBySymbol = getAssetBiasMap(assetBiases);
+    const aiBySymbol = getAssetBiasMap(assetBiases, 5);
+    if (assets.length === 0) {
+      const aiOnlyCards = renderAiOnlyAssetCards(aiBySymbol);
+      return aiOnlyCards
+        ? `${renderFreshnessBadge(lastScanLabel)}${aiOnlyCards}`
+        : `${renderFreshnessBadge(lastScanLabel)}<div class="tnf-empty">No fresh watched assets detected in the last 5 hours of scraped tweets.</div>`;
+    }
     return `${renderFreshnessBadge(lastScanLabel)}${assets.map(([asset, items]) => {
       const assetTweets = items.map((item) => item.tweet);
       const avg = Math.round(assetTweets.reduce((sum, tweet) => sum + Number(tweet.contextScoreValue || 0), 0) / assetTweets.length);
@@ -778,6 +805,34 @@
     }).join("")}`;
   }
 
+  function renderAiOnlyAssetCards(aiBySymbol) {
+    const rows = Array.from(aiBySymbol.values());
+    if (!rows.length) return "";
+    return rows.map((aiBias) => {
+      const bias = aiBias.newsBias && aiBias.newsBias !== "unclear" ? aiBias.newsBias : "neutral";
+      const drivers = Array.isArray(aiBias.mainDrivers) ? aiBias.mainDrivers.slice(0, 3) : [];
+      return `
+        <div class="tnf-card tnf-asset-card ${escapeAttribute(bias)}">
+          <div class="tnf-asset-head">
+            <div class="tnf-asset-symbol">${escapeHtml(aiBias.symbol || "Asset")}</div>
+            <div class="tnf-asset-score">${escapeHtml(`${Math.round(aiBias.confidence || 0)}% AI`)}</div>
+          </div>
+          <div class="tnf-asset-body">
+            <div class="tnf-pill-row">
+              <span class="tnf-pill">${escapeHtml(bias)} bias</span>
+              <span class="tnf-pill">fresh 5h window</span>
+              ${aiBias.fallback ? '<span class="tnf-pill">local fallback</span>' : '<span class="tnf-pill">OpenAI reasons</span>'}
+            </div>
+            <div class="tnf-text">${escapeHtml(aiBias.tradingContext || "Fresh scraped tweets support this asset read.")}</div>
+            ${renderAssetAiReasons(aiBias, bias)}
+            ${drivers.length ? `<ul class="tnf-driver-list">${drivers.map((driver) => `<li>${escapeHtml(driver)}</li>`).join("")}</ul>` : ""}
+            ${aiBias.riskWarning ? `<div class="tnf-ai-warning">${escapeHtml(aiBias.riskWarning)}</div>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
   function renderFreshnessBadge(lastScanLabel) {
     return `
       <div class="tnf-freshness">
@@ -785,6 +840,45 @@
         <span>${escapeHtml(lastScanLabel)}</span>
       </div>
     `;
+  }
+
+  function renderSimpleTodayTweet(tweet) {
+    return `
+      <div class="tnf-simple-tweet">
+        <div class="tnf-simple-time">${escapeHtml(formatTweetOnlyTime(tweet.time || tweet.createdAt || tweet.scannedAt))}</div>
+        <div class="tnf-simple-text">${escapeHtml(tweet.text || tweet.summary || "")}</div>
+      </div>
+    `;
+  }
+
+  function normalizeTodayTweets(tweets, scannedAt) {
+    const byId = new Map();
+    (Array.isArray(tweets) ? tweets : []).forEach((tweet, index) => {
+      if (!tweet || !(tweet.text || tweet.summary)) return;
+      const id = tweet.id || tweet.url || TNFUtils.simpleHash(`${tweet.time || scannedAt || index}:${tweet.text || tweet.summary}`);
+      byId.set(id, {
+        ...tweet,
+        id,
+        text: tweet.text || tweet.summary || "",
+        time: tweet.time || tweet.createdAt || tweet.scannedAt || scannedAt || ""
+      });
+    });
+    return Array.from(byId.values()).sort((a, b) => {
+      const bTime = Date.parse(b.time || b.createdAt || b.scannedAt || "") || 0;
+      const aTime = Date.parse(a.time || a.createdAt || a.scannedAt || "") || 0;
+      return bTime - aTime;
+    });
+  }
+
+  function filterTweetsForFreshAssetWindow(tweets, scannedAt) {
+    const cutoff = Date.now() - 5 * 60 * 60 * 1000;
+    const scanTimestamp = Date.parse(scannedAt || "");
+    return (Array.isArray(tweets) ? tweets : []).filter((tweet) => {
+      const timestamp = Date.parse(tweet.time || tweet.createdAt || tweet.scannedAt || "");
+      if (Number.isFinite(timestamp)) return timestamp >= cutoff;
+      if (Number.isFinite(scanTimestamp)) return scanTimestamp >= cutoff;
+      return true;
+    });
   }
 
   function getLatestTweetTimestamp(tweets) {
@@ -802,7 +896,18 @@
     return date.toLocaleString();
   }
 
-  function getAssetBiasMap(assetBiases) {
+  function formatTweetOnlyTime(value) {
+    if (!value) return "time unavailable";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function getAssetBiasMap(assetBiases, maxAgeHours) {
+    const generatedAt = Date.parse(assetBiases && assetBiases.generatedAt ? assetBiases.generatedAt : "");
+    if (Number.isFinite(generatedAt) && Date.now() - generatedAt > maxAgeHours * 60 * 60 * 1000) {
+      return new Map();
+    }
     const rows = assetBiases && Array.isArray(assetBiases.instrumentBiases)
       ? assetBiases.instrumentBiases
       : [];

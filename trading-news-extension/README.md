@@ -24,6 +24,8 @@ The local filter works without a backend and without AI. Optional OpenAI analysi
 - Floating sidebar on X/Twitter via `Show Sidebar`, focused on Assets, Today, and Macro Desk.
 - Optional auto-show sidebar on a configured X/Twitter or TradingView URL, using the latest synchronized scan data.
 - Draggable sidebar with configurable width, placement, top offset, side offset, and max height.
+- `Today` shows every tweet captured by the latest scrape with only tweet time and tweet text.
+- `Assets` bias and reasons use only fresh scraped tweets from the latest 5-hour window.
 - Local history with deduplication by tweet URL or text hash.
 - CSV export for filtered news and raw scan results.
 - Options page for keywords, categories, minimum score, theme, auto-refresh, import/export settings, and future AI Backend URL.
