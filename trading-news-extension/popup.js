@@ -193,28 +193,44 @@
 
   async function showSidebar() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.id || !TNFUtils.isTwitterUrl(tab.url)) {
-      showMessage("Open an X/Twitter tab before showing the sidebar.");
+    const activeTwitterTabId = tab && tab.id && TNFUtils.isTwitterUrl(tab.url) ? tab.id : null;
+    const sidebarTweets = getSidebarTweets();
+    if (!sidebarTweets.length) {
+      showMessage("No synchronized scan data yet. Run Scan Latest 10 Tweets once, then open the sidebar.");
       return;
     }
 
     try {
-      const assetBiases = await getAssetBiasesForSidebar();
-      await chrome.tabs.sendMessage(tab.id, {
-        type: "TNF_SHOW_SIDEBAR",
-        tweets: getFilteredTweets(),
-        rawCount: state.rawTweets.length,
-        sessionBrief: state.sessionBrief,
-        assetBiases
+      const assetBiases = await getAssetBiasesForSidebar(sidebarTweets);
+      const response = await chrome.runtime.sendMessage({
+        type: "TNF_SHOW_SIDEBAR_ON_TAB",
+        payload: {
+          targetTabId: activeTwitterTabId,
+          tweets: sidebarTweets,
+          rawCount: state.rawTweets.length || sidebarTweets.length,
+          sessionBrief: state.sessionBrief,
+          assetBiases
+        }
       });
+      if (!response || !response.ok) {
+        showMessage(response && response.error ? response.error : "Could not show sidebar.");
+        return;
+      }
       window.close();
     } catch (error) {
-      showMessage("Could not show sidebar. Reload the X/Twitter tab and try again.");
+      showMessage("Could not show sidebar. Reload the target X/Twitter tab and try again.");
     }
   }
 
-  async function getAssetBiasesForSidebar() {
-    const tweets = getAiInputTweets().slice(0, 10);
+  function getSidebarTweets() {
+    const filtered = getFilteredTweets();
+    if (filtered.length) return filtered;
+    if (state.tweets.length) return state.tweets;
+    return state.history;
+  }
+
+  async function getAssetBiasesForSidebar(sourceTweets) {
+    const tweets = getAiInputTweets({ tweets: sourceTweets || state.tweets, rawTweets: state.rawTweets }).slice(0, 10);
     if (!tweets.length) return null;
 
     try {

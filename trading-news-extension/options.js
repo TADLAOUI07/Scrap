@@ -31,6 +31,8 @@
       "autoRefreshEnabled",
       "autoRefreshState",
       "autoRefreshMinutes",
+      "autoShowSidebarEnabled",
+      "sidebarTargetUrl",
       "minimumScore",
       "selectedPair",
       "watchedPairs",
@@ -71,6 +73,8 @@
   function render() {
     els.autoRefreshEnabled.checked = Boolean(settings.autoRefreshEnabled);
     els.autoRefreshMinutes.value = settings.autoRefreshMinutes || 5;
+    els.autoShowSidebarEnabled.checked = Boolean(settings.autoShowSidebarEnabled);
+    els.sidebarTargetUrl.value = settings.sidebarTargetUrl || "";
     els.autoRefreshState.textContent = `Auto-refresh: ${settings.autoRefreshEnabled ? "ON" : "OFF"} | every ${settings.autoRefreshMinutes || 5} min`;
     els.minimumScore.value = settings.minimumScore;
     renderPairOptions();
@@ -151,6 +155,8 @@
     return {
       autoRefreshEnabled: els.autoRefreshEnabled.checked,
       autoRefreshMinutes: TNFUtils.clampNumber(els.autoRefreshMinutes.value, 1, 1440),
+      autoShowSidebarEnabled: els.autoShowSidebarEnabled.checked,
+      sidebarTargetUrl: els.sidebarTargetUrl.value.trim(),
       minimumScore: TNFUtils.clampNumber(els.minimumScore.value, 0, 5),
       selectedPair: els.selectedPair.value,
       watchedPairs: els.watchedPairs.value

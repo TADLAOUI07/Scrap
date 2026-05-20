@@ -34,6 +34,17 @@
         </label>
         <p class="state-text">Interval is in minutes. Minimum allowed value is 1 minute.</p>
 
+        <label class="row">
+          <span>Auto-show sidebar on target X/Twitter page</span>
+          <input id="autoShowSidebarEnabled" type="checkbox">
+        </label>
+
+        <label>
+          Sidebar target X/Twitter URL
+          <input id="sidebarTargetUrl" type="url" placeholder="https://x.com/target_account">
+        </label>
+        <p class="state-text">When enabled, the sidebar opens automatically on this X/Twitter tab after the page loads, using the latest synchronized scan data.</p>
+
         <label>
           Minimum score to display
           <input id="minimumScore" type="number" min="0" max="5" step="1">

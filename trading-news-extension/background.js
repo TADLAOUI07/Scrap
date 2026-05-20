@@ -48,6 +48,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "TNF_SHOW_SIDEBAR_ON_TAB") {
+    showSidebarOnTargetTab(message.payload || {}).then(sendResponse);
+    return true;
+  }
+
   if (message.type === "TNF_ANALYZE_NEWS") {
     analyzeMarketNews(message.payload || {}).then(sendResponse);
     return true;
@@ -115,6 +120,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status !== "complete" || !TNFUtils.isTwitterUrl(tab.url || "")) return;
+
+  await maybeAutoShowSidebar(tabId, tab);
 
   const data = await chrome.storage.local.get(["tnf_pending_auto_scan"]);
   const pending = data.tnf_pending_auto_scan;
@@ -228,6 +235,108 @@ async function scanActiveTab() {
   }
 }
 
+async function showSidebarOnTargetTab(payload) {
+  const targetTab = await findSidebarTargetTab(payload.targetTabId);
+  if (!targetTab || !targetTab.id || !TNFUtils.isTwitterUrl(targetTab.url || "")) {
+    return {
+      ok: false,
+      error: "No X/Twitter target tab found. Open or watch the target page first."
+    };
+  }
+
+  const storedPayload = await buildStoredSidebarPayload();
+  const tweets = Array.isArray(payload.tweets) && payload.tweets.length
+    ? payload.tweets
+    : storedPayload.tweets;
+  if (!tweets.length) {
+    return {
+      ok: false,
+      error: "No synchronized scan data yet. Run Scan Latest 10 Tweets once, then open the sidebar."
+    };
+  }
+
+  const response = await sendSidebarMessage(targetTab.id, {
+    type: "TNF_SHOW_SIDEBAR",
+    tweets,
+    rawCount: Number(payload.rawCount || storedPayload.rawCount || tweets.length),
+    sessionBrief: payload.sessionBrief || storedPayload.sessionBrief || null,
+    assetBiases: payload.assetBiases || null
+  });
+
+  if (response.ok) {
+    const settings = await TNFStorage.getSettings();
+    await TNFStorage.saveSettings({
+      sidebarTargetUrl: settings.sidebarTargetUrl || targetTab.url || "",
+      autoRefreshTargetTabId: targetTab.id,
+      autoRefreshTargetUrl: targetTab.url || "",
+      autoRefreshTargetTitle: targetTab.title || ""
+    });
+  }
+
+  return response;
+}
+
+async function maybeAutoShowSidebar(tabId, tab) {
+  try {
+    const settings = await TNFStorage.getSettings();
+    if (!settings.autoShowSidebarEnabled || !settings.sidebarTargetUrl) return;
+    if (!urlMatchesSidebarTarget(tab.url || "", settings.sidebarTargetUrl)) return;
+
+    const payload = await buildStoredSidebarPayload();
+    if (!payload.tweets.length) return;
+
+    await wait(1200);
+    await sendSidebarMessage(tabId, {
+      type: "TNF_SHOW_SIDEBAR",
+      tweets: payload.tweets,
+      rawCount: payload.rawCount,
+      sessionBrief: payload.sessionBrief,
+      assetBiases: null
+    });
+  } catch (error) {
+    // Auto sidebar is best-effort; manual Show Sidebar remains available.
+  }
+}
+
+async function buildStoredSidebarPayload() {
+  const lastScan = await TNFStorage.getLastScan();
+  const history = await TNFStorage.getHistory();
+  const sessionBrief = await TNFStorage.getSessionBrief();
+  const scanTweets = lastScan && Array.isArray(lastScan.tweets) ? lastScan.tweets : [];
+  const tweets = scanTweets.length ? scanTweets : history;
+  const rawCount = lastScan && Array.isArray(lastScan.rawTweets)
+    ? lastScan.rawTweets.length
+    : Number(lastScan && lastScan.scannedCount ? lastScan.scannedCount : tweets.length);
+
+  return {
+    tweets,
+    rawCount,
+    sessionBrief
+  };
+}
+
+async function sendSidebarMessage(tabId, payload) {
+  try {
+    await chrome.tabs.sendMessage(tabId, payload);
+    return { ok: true };
+  } catch (error) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: CONTENT_SCRIPT_FILES
+      });
+      await wait(700);
+      await chrome.tabs.sendMessage(tabId, payload);
+      return { ok: true };
+    } catch (injectionError) {
+      return {
+        ok: false,
+        error: "Could not show the sidebar on this X/Twitter tab. Reload the tab once, then try again."
+      };
+    }
+  }
+}
+
 async function handleAutoScanComplete(payload) {
   await TNFStorage.setLastScan(payload);
   await TNFStorage.saveSettings({
@@ -282,6 +391,52 @@ async function getStoredTargetTab(settings) {
   }
 
   return null;
+}
+
+async function findSidebarTargetTab(preferredTabId) {
+  if (preferredTabId) {
+    try {
+      const preferred = await chrome.tabs.get(preferredTabId);
+      if (preferred && TNFUtils.isTwitterUrl(preferred.url || "")) return preferred;
+    } catch (error) {
+      // Continue with saved target lookup below.
+    }
+  }
+
+  const settings = await TNFStorage.getSettings();
+  if (settings.sidebarTargetUrl) {
+    const matchingTabs = await chrome.tabs.query({ url: ["https://x.com/*", "https://twitter.com/*"] });
+    const matched = matchingTabs.find((tab) => urlMatchesSidebarTarget(tab.url || "", settings.sidebarTargetUrl));
+    if (matched) return matched;
+  }
+
+  const storedTarget = await getStoredTargetTab(settings);
+  if (storedTarget) return storedTarget;
+
+  const activeTab = await findActiveTwitterTab();
+  if (activeTab) return activeTab;
+
+  const twitterTabs = await chrome.tabs.query({ url: ["https://x.com/*", "https://twitter.com/*"] });
+  return twitterTabs.find((tab) => tab && tab.id && TNFUtils.isTwitterUrl(tab.url || "")) || null;
+}
+
+function urlMatchesSidebarTarget(currentUrl, targetUrl) {
+  const current = normalizeUrlForMatch(currentUrl);
+  const target = normalizeUrlForMatch(targetUrl);
+  if (!current || !target) return false;
+  return current === target || current.startsWith(`${target}/`);
+}
+
+function normalizeUrlForMatch(value) {
+  try {
+    const url = new URL(value);
+    if (!TNFUtils.isTwitterUrl(url.href)) return "";
+    const host = url.hostname.replace(/^www\./, "").replace(/^twitter\.com$/, "x.com");
+    const path = url.pathname.replace(/\/+$/, "");
+    return `${host}${path || "/"}`.toLowerCase();
+  } catch (error) {
+    return "";
+  }
 }
 
 async function findActiveTwitterTab() {

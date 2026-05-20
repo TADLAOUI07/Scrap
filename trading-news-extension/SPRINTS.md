@@ -717,3 +717,31 @@ Ces elements sont dans la roadmap future, pas dans le MVP actuel :
 - Elle ne fait pas d'auto-scroll.
 - Elle ne garantit aucun signal de trading.
 - Elle ne remplace pas l'analyse humaine.
+
+## Sprint 15 - Reliable Sidebar Target
+
+Objectif : rendre `Show Sidebar` fiable meme quand le content script n'est pas encore actif dans l'onglet X/Twitter, et permettre une sidebar automatique sur une URL cible.
+
+Livrables :
+
+- Nouveau message background `TNF_SHOW_SIDEBAR_ON_TAB`.
+- Retry automatique avec injection de `utils.js`, `scoring.js`, `cockpit.js`, `storage.js`, `content.js` si l'onglet X/Twitter ne repond pas.
+- `Show Sidebar` peut utiliser l'onglet X/Twitter actif, l'onglet surveille, ou une URL cible configuree.
+- Nouveaux settings :
+  - `autoShowSidebarEnabled`,
+  - `sidebarTargetUrl`.
+- Nouvelle option dans `options.html` pour coller l'URL cible X/Twitter.
+- La sidebar automatique n'ouvre jamais de nouvel onglet.
+- La sidebar automatique s'affiche seulement quand l'utilisateur charge ou recharge l'URL cible.
+- Les donnees affichees viennent du dernier scan synchronise ou de l'historique local.
+
+Statut : fait.
+
+Fichiers principaux :
+
+- `background.js`
+- `popup.js`
+- `options.html`
+- `options.js`
+- `storage.js`
+- `README.md`

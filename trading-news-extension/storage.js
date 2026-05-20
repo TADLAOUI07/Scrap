@@ -77,6 +77,8 @@
     autoRefreshTargetTabId: null,
     autoRefreshTargetUrl: "",
     autoRefreshTargetTitle: "",
+    autoShowSidebarEnabled: false,
+    sidebarTargetUrl: "",
     minimumScore: 1,
     theme: "dark",
     selectedPair: "XAUUSD",
