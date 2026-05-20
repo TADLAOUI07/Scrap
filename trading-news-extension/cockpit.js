@@ -196,9 +196,11 @@
     const base = [symbol];
     const map = {
       XAUUSD: ["gold", "xau", "xauusd", "bullion", "dxy", "usd", "yields", "fed", "cpi"],
+      XAG: ["silver", "xag", "xagusd", "precious metals", "gold", "usd", "dxy", "yields", "fed", "cpi"],
       EURUSD: ["eurusd", "euro", "ecb", "lagarde", "dxy", "usd", "fed"],
       GBPUSD: ["gbpusd", "gbp", "pound", "sterling", "boe", "usd"],
       USDJPY: ["usdjpy", "jpy", "yen", "boj", "yields", "usd"],
+      BTC: ["btc", "bitcoin", "crypto", "risk-on", "risk off", "liquidity", "fed", "usd", "yields"],
       BTCUSD: ["btcusd", "bitcoin", "btc", "crypto", "risk-on", "risk off"],
       ETHUSD: ["ethusd", "ethereum", "eth", "crypto"],
       US100: ["us100", "nasdaq", "tech", "stocks", "equities", "yields"],

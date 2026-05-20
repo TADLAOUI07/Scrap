@@ -109,7 +109,9 @@
     return [
       "You are a senior bank cross-asset strategist producing an instrument-bias note for a trading desk.",
       "Analyze ONLY the supplied X/Twitter news. Do not use external facts. Do not invent missing data.",
-      "For each watched instrument that is supported by the supplied tweets, explain why the news flow is bullish, bearish, mixed, neutral, or unclear.",
+      "Return one row for EVERY watched instrument, even when no supplied tweet directly supports it.",
+      "For instruments supported by supplied tweets, explain why the news flow is bullish, bearish, mixed, neutral, or unclear.",
+      "For instruments without direct support, return unclear or neutral with low confidence and clearly state that no fresh related tweet supports a directional read.",
       "Focus on catalysts, transmission channels, rate/yield/DXY impact, risk sentiment, commodities, equities, crypto, and second-order effects.",
       "Mention exact tweet IDs supporting the reasons. If support is weak or contradictory, say so clearly.",
       "Do not provide entries, stop losses, take profits, position sizing, or buy/sell instructions.",
@@ -757,16 +759,19 @@
     const base = [normalized.toLowerCase()];
     const map = {
       XAUUSD: ["gold", "xau", "xauusd", "usd", "dxy", "fed", "cpi", "pce", "yields", "safe haven"],
+      XAG: ["xag", "xagusd", "silver", "precious metals", "gold", "usd", "dxy", "fed", "cpi", "pce", "yields", "safe haven"],
       EURUSD: ["eurusd", "euro", "eur", "usd", "dxy", "ecb", "fed", "lagarde", "eurozone"],
       GBPUSD: ["gbpusd", "gbp", "pound", "boe", "usd", "fed", "dxy"],
       USDJPY: ["usdjpy", "jpy", "yen", "boj", "usd", "fed", "yields", "us10y"],
+      BTC: ["btc", "bitcoin", "crypto", "risk on", "risk off", "usd", "fed", "yields", "liquidity"],
       BTCUSD: ["btcusd", "bitcoin", "btc", "crypto", "risk on", "risk off", "usd", "fed", "yields"],
       ETHUSD: ["ethusd", "ethereum", "eth", "crypto", "risk on", "risk off", "usd", "fed"],
       US100: ["us100", "nasdaq", "tech", "stocks", "yields", "fed", "risk on", "risk off"],
       SPX500: ["spx", "spx500", "s&p", "stocks", "equities", "fed", "risk on", "risk off"],
       NASDAQ: ["nasdaq", "us100", "tech", "stocks", "yields", "fed", "earnings"],
       DOW: ["dow", "djia", "stocks", "industrials", "fed", "earnings"],
-      USOIL: ["usoil", "oil", "crude", "wti", "brent", "opec", "inventories", "middle east"]
+      USOIL: ["usoil", "oil", "crude", "wti", "brent", "opec", "inventories", "middle east"],
+      DXY: ["dxy", "dollar index", "usd", "dollar", "yields", "fed", "cpi", "pce"]
     };
     return Array.from(new Set([...base, ...(map[normalized] || [])])).map((item) => item.toLowerCase());
   }

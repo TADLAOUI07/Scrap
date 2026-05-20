@@ -35,6 +35,8 @@
   const DEFAULT_AI_KEYWORDS = [
     "gold",
     "xauusd",
+    "silver",
+    "xag",
     "usd",
     "dxy",
     "fed",
@@ -68,6 +70,17 @@
     "risk off",
     "risk on"
   ];
+  const REQUIRED_WATCHED_ASSETS = [
+    "DXY",
+    "USOIL",
+    "XAUUSD",
+    "NASDAQ",
+    "DOW",
+    "XAG",
+    "EURUSD",
+    "GBPUSD",
+    "BTC"
+  ];
 
   const DEFAULT_SETTINGS = {
     autoRefreshEnabled: false,
@@ -93,17 +106,7 @@
     theme: "dark",
     selectedPair: "XAUUSD",
     watchedPairs: [
-      "XAUUSD",
-      "EURUSD",
-      "GBPUSD",
-      "USDJPY",
-      "BTCUSD",
-      "ETHUSD",
-      "US100",
-      "SPX500",
-      "NASDAQ",
-      "DOW",
-      "USOIL"
+      ...REQUIRED_WATCHED_ASSETS
     ],
     aiProvider: "openai",
     openAiApiKey: "",
@@ -192,6 +195,7 @@
       ...DEFAULT_SETTINGS,
       ...stored,
       aiAnalysisPrompt,
+      watchedPairs: normalizeWatchedPairs(stored.watchedPairs),
       categories: mergeCategories(stored.categories)
     };
   }
@@ -220,6 +224,23 @@
         keywords: Array.isArray(stored.keywords) ? stored.keywords : defaultCategory.keywords
       };
     });
+  }
+
+  function normalizeWatchedPairs(pairs) {
+    const source = Array.isArray(pairs) && pairs.length ? pairs : DEFAULT_SETTINGS.watchedPairs;
+    const normalized = source
+      .map((pair) => normalizeAssetSymbol(pair))
+      .filter(Boolean);
+    return Array.from(new Set([...REQUIRED_WATCHED_ASSETS, ...normalized]));
+  }
+
+  function normalizeAssetSymbol(pair) {
+    const symbol = String(pair || "").trim().toUpperCase();
+    if (!symbol) return "";
+    if (symbol === "BTCUSD" || symbol === "BTCUSDT" || symbol === "XBTUSD") return "BTC";
+    if (symbol === "SILVER" || symbol === "XAGUSD") return "XAG";
+    if (symbol === "US100" || symbol === "NAS100") return "NASDAQ";
+    return symbol;
   }
 
   async function getHistory() {
@@ -362,6 +383,7 @@
     LEGACY_DEFAULT_AI_ANALYSIS_PROMPT,
     DEFAULT_AI_ANALYSIS_PROMPT,
     DEFAULT_AI_KEYWORDS,
+    REQUIRED_WATCHED_ASSETS,
     DEFAULT_SETTINGS,
     getSettings,
     saveSettings,

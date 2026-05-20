@@ -222,7 +222,7 @@
     const todayTweets = normalizeTodayTweets(allTweets && allTweets.length ? allTweets : sortedTweets, scannedAt);
     const freshAssetTweets = filterTweetsForFreshAssetWindow(sortedTweets, scannedAt);
     const lastScanLabel = formatSidebarDate(scannedAt || getLatestTweetTimestamp(sortedTweets));
-    const dashboard = buildSidebarDashboard(sortedTweets, todayTweets, freshAssetTweets, rawCount, sessionBrief, assetBiases, lastScanLabel);
+    const dashboard = buildSidebarDashboard(sortedTweets, todayTweets, freshAssetTweets, rawCount, sessionBrief, assetBiases, lastScanLabel, settings);
     const sidebar = document.createElement("aside");
     const activeTabId = dashboard.tabs[0] ? dashboard.tabs[0].id : "assets";
     sidebar.id = SIDEBAR_ID;
@@ -576,6 +576,13 @@
         font-size: 12px;
         line-height: 1.45;
       }
+      #${SIDEBAR_ID} .tnf-related-title {
+        color: #aebbd0;
+        font-size: 11px;
+        font-weight: 950;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
       #${SIDEBAR_ID} .tnf-ai-reason-box {
         display: grid;
         gap: 7px;
@@ -755,11 +762,11 @@
     return Math.min(max, Math.max(min, number));
   }
 
-  function buildSidebarDashboard(tweets, todayTweets, freshAssetTweets, rawCount, sessionBrief, assetBiases, lastScanLabel) {
+  function buildSidebarDashboard(tweets, todayTweets, freshAssetTweets, rawCount, sessionBrief, assetBiases, lastScanLabel, settings) {
     const today = buildTodayPanel(tweets, todayTweets, rawCount, sessionBrief, lastScanLabel);
     return {
       tabs: [
-        { id: "assets", label: "Assets", html: buildAssetsPanel(freshAssetTweets, assetBiases, lastScanLabel) },
+        { id: "assets", label: "Assets", html: buildAssetsPanel(freshAssetTweets, assetBiases, lastScanLabel, settings) },
         { id: "today", label: "Today", html: today },
         { id: "macro", label: "Macro Desk", html: buildMacroPanel(tweets) }
       ]
@@ -837,47 +844,85 @@
     }).join("");
   }
 
-  function buildAssetsPanel(tweets, assetBiases, lastScanLabel) {
-    const groups = groupBy(tweets.flatMap((tweet) => (tweet.affectedAssets || []).map((asset) => ({ asset, tweet }))), (item) => item.asset);
-    const assets = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
+  function buildAssetsPanel(tweets, assetBiases, lastScanLabel, settings) {
+    const groups = groupBy(
+      tweets.flatMap((tweet) => (tweet.affectedAssets || []).map((asset) => ({ asset: normalizeAssetSymbol(asset), tweet }))),
+      (item) => item.asset
+    );
+    const assetList = getSidebarAssetList(settings);
     const aiBySymbol = getAssetBiasMap(assetBiases, 5);
-    if (assets.length === 0) {
-      const aiOnlyCards = renderAiOnlyAssetCards(aiBySymbol);
-      return aiOnlyCards
-        ? `${renderFreshnessBadge(lastScanLabel)}${aiOnlyCards}`
-        : `${renderFreshnessBadge(lastScanLabel)}<div class="tnf-empty">No fresh watched assets detected in the last 5 hours of scraped tweets.</div>`;
-    }
-    return `${renderFreshnessBadge(lastScanLabel)}${assets.map(([asset, items]) => {
+    return `${renderFreshnessBadge(lastScanLabel)}${assetList.map((asset) => {
+      const items = groups[asset] || [];
       const assetTweets = items.map((item) => item.tweet);
-      const avg = Math.round(assetTweets.reduce((sum, tweet) => sum + Number(tweet.contextScoreValue || 0), 0) / assetTweets.length);
+      const hasRelatedTweets = assetTweets.length > 0;
+      const avg = hasRelatedTweets
+        ? Math.round(assetTweets.reduce((sum, tweet) => sum + Number(tweet.contextScoreValue || 0), 0) / assetTweets.length)
+        : 0;
       const aiBias = aiBySymbol.get(String(asset).toUpperCase());
-      const bias = aiBias && aiBias.newsBias && aiBias.newsBias !== "unclear" ? aiBias.newsBias : inferAssetBias(assetTweets);
-      const risk = assetTweets.some((tweet) => tweet.contextRiskLevel === "high") ? "high" : avg >= 55 ? "medium" : "low";
+      const bias = aiBias && aiBias.newsBias && aiBias.newsBias !== "unclear"
+        ? aiBias.newsBias
+        : hasRelatedTweets
+          ? inferAssetBias(assetTweets)
+          : "neutral";
+      const risk = hasRelatedTweets
+        ? assetTweets.some((tweet) => tweet.contextRiskLevel === "high") ? "high" : avg >= 55 ? "medium" : "low"
+        : "low";
       const drivers = aiBias && aiBias.mainDrivers && aiBias.mainDrivers.length
         ? aiBias.mainDrivers.slice(0, 3)
         : getTopItems(assetTweets.map((tweet) => tweet.macroTheme || "").filter(Boolean), 3);
-      const topTweet = assetTweets.sort((a, b) => Number(b.contextScoreValue || 0) - Number(a.contextScoreValue || 0))[0];
+      const topTweet = [...assetTweets].sort((a, b) => Number(b.contextScoreValue || 0) - Number(a.contextScoreValue || 0))[0];
+      const relatedTweetBullets = hasRelatedTweets ? renderRelatedAssetTweets(assetTweets) : "";
       return `
         <div class="tnf-card tnf-asset-card ${escapeAttribute(bias)}">
           <div class="tnf-asset-head">
             <div class="tnf-asset-symbol">${escapeHtml(asset)}</div>
-            <div class="tnf-asset-score">${escapeHtml(aiBias ? `${Math.round(aiBias.confidence || 0)}% AI` : `Context ${avg}/100`)}</div>
+            <div class="tnf-asset-score">${escapeHtml(aiBias ? `${Math.round(aiBias.confidence || 0)}% AI` : hasRelatedTweets ? `Context ${avg}/100` : "No fresh match")}</div>
           </div>
           <div class="tnf-asset-body">
             <div class="tnf-pill-row">
               <span class="tnf-pill ${escapeAttribute(risk)}">${escapeHtml(risk)} risk</span>
-              <span class="tnf-pill">${assetTweets.length} supporting tweet(s)</span>
+              <span class="tnf-pill">${assetTweets.length} related tweet(s)</span>
               ${aiBias && aiBias.fallback ? '<span class="tnf-pill">local fallback</span>' : aiBias ? '<span class="tnf-pill">OpenAI reasons</span>' : '<span class="tnf-pill">local reasons</span>'}
             </div>
             <div class="tnf-text">${escapeHtml(aiBias && aiBias.tradingContext ? aiBias.tradingContext : getAssetContextLine(asset, bias, risk, topTweet))}</div>
             ${renderAssetAiReasons(aiBias, bias)}
             ${drivers.length ? `<ul class="tnf-driver-list">${drivers.map((driver) => `<li>${escapeHtml(driver)}</li>`).join("")}</ul>` : ""}
+            ${relatedTweetBullets}
             ${aiBias && aiBias.riskWarning ? `<div class="tnf-ai-warning">${escapeHtml(aiBias.riskWarning)}</div>` : ""}
             ${topTweet && topTweet.url ? `<a href="${escapeAttribute(topTweet.url)}" target="_blank" rel="noreferrer">Open strongest tweet</a>` : ""}
           </div>
         </div>
       `;
     }).join("")}`;
+  }
+
+  function getSidebarAssetList(settings) {
+    const required = globalThis.TNFStorage && Array.isArray(TNFStorage.REQUIRED_WATCHED_ASSETS)
+      ? TNFStorage.REQUIRED_WATCHED_ASSETS
+      : ["DXY", "USOIL", "XAUUSD", "NASDAQ", "DOW", "XAG", "EURUSD", "GBPUSD", "BTC"];
+    const configured = settings && Array.isArray(settings.watchedPairs) ? settings.watchedPairs : [];
+    return Array.from(new Set([...required, ...configured].map((asset) => normalizeAssetSymbol(asset)).filter(Boolean)));
+  }
+
+  function normalizeAssetSymbol(asset) {
+    const symbol = String(asset || "").trim().toUpperCase();
+    if (symbol === "BTCUSD" || symbol === "BTCUSDT" || symbol === "XBTUSD") return "BTC";
+    if (symbol === "XAGUSD" || symbol === "SILVER") return "XAG";
+    if (symbol === "US100" || symbol === "NAS100") return "NASDAQ";
+    return symbol;
+  }
+
+  function renderRelatedAssetTweets(assetTweets) {
+    const rows = [...assetTweets]
+      .sort((a, b) => Number(b.contextScoreValue || b.impactScore || 0) - Number(a.contextScoreValue || a.impactScore || 0))
+      .slice(0, 3);
+    if (!rows.length) return "";
+    return `
+      <div class="tnf-related-title">Related scraped news</div>
+      <ul class="tnf-driver-list">
+        ${rows.map((tweet) => `<li>${escapeHtml(tweet.summary || tweet.text || "")}</li>`).join("")}
+      </ul>
+    `;
   }
 
   function renderAiOnlyAssetCards(aiBySymbol) {

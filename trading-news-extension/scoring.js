@@ -122,16 +122,19 @@
 
   const PAIR_KEYWORDS = {
     XAUUSD: ["xauusd", "gold", "bullion", "precious metals", "usd", "dxy", "yields", "fed", "cpi", "inflation"],
+    XAG: ["xag", "xagusd", "silver", "precious metals", "gold", "usd", "dxy", "yields", "fed", "cpi", "inflation"],
     EURUSD: ["eurusd", "euro", "ecb", "lagarde", "eurozone", "usd", "dxy", "fed", "cpi", "inflation"],
     GBPUSD: ["gbpusd", "pound", "sterling", "boe", "bank of england", "uk", "usd", "fed"],
     USDJPY: ["usdjpy", "yen", "jpy", "boj", "bank of japan", "japan", "yields", "usd"],
+    BTC: ["btc", "bitcoin", "crypto", "etf", "risk on", "risk off", "liquidity", "fed", "usd", "yields"],
     BTCUSD: ["btcusd", "bitcoin", "btc", "crypto", "etf", "risk on", "risk off", "liquidity", "fed"],
     ETHUSD: ["ethusd", "ethereum", "eth", "crypto", "etf", "risk on", "risk off", "liquidity", "fed"],
     US100: ["us100", "nasdaq", "tech", "stocks", "equities", "yields", "fed", "earnings", "ai"],
     SPX500: ["spx500", "spx", "s&p", "sp500", "stocks", "equities", "fed", "earnings", "risk on"],
     NASDAQ: ["nasdaq", "us100", "tech", "stocks", "equities", "yields", "fed", "earnings"],
     DOW: ["dow", "djia", "industrials", "stocks", "equities", "fed", "earnings"],
-    USOIL: ["usoil", "oil", "crude", "wti", "brent", "opec", "inventories", "middle east"]
+    USOIL: ["usoil", "oil", "crude", "wti", "brent", "opec", "inventories", "middle east"],
+    DXY: ["dxy", "dollar index", "usd", "dollar", "yields", "fed", "cpi", "pce"]
   };
 
   const SCORE_5 = [
